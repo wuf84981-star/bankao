@@ -1,0 +1,31 @@
+# 密钥文件：永远不进库
+.env
+
+# 运行数据：数据库备份/上传资料/QQ登录态，全是用户数据与凭据
+data/
+
+# Python 环境与产物
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# 前端依赖与构建产物（出货品由 CI/本机 build 生成）
+frontend/node_modules/
+frontend/dist/
+
+# IDE 与工具状态
+.idea/
+*.iml
+.trae/
+.workbuddy/
+
+# 评测草稿：含真实讲义摘录，私人金标底稿不进库
+backend/evals/goldset_draft*
+backend/evals/reports/
+
+# 杂项
+NUL
+
+# QQ 小号好友码：本机能用，但不进公开库（公开=谁都能扫码加小号）
+frontend/public/qq_friend_qrcode.jpg

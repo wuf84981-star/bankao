@@ -1,0 +1,48 @@
+# ============================================================
+# 金标准题库（goldset.yaml）· v2 全量 30 题（2026-10-11）
+# 取材户 4（唯一有两份材料的房：常识判断.md + 数据分析核心讲义.md）
+# ——第二份是**数据科学向**讲义（距离/聚类/标准化），与常识材料
+# 构成跨域干扰，正是要的区分度。
+# v1 的 20 道常识题按 id+40 映射到户 4 的镜像块（材料 309→310 全同）。
+# 定稿规则不变：只收正文块，目录/总览块不算得分点；
+# 邻块容错由跑分器 accept_map 自动扩，分母只数核心块。
+# 第三批留口：公考「资料分析/数量关系」真料入库后补词典专名题
+# （基期量那 52 词至今无家可归），凑满施工图 25-30 已达标、可再扩。
+# ============================================================
+meta:
+  uid: 4
+  version: "2026-10-11-v2-30题-常识20+数据科学10"
+
+items:
+  # ── 常识判断.md（材料310，id 系 v1+40）──
+  - {id: g01, question: 宪法常考的核心知识点有哪些, expect_ids: [861]}
+  - {id: g02, question: 民法典有什么重点考点, expect_ids: [862]}
+  - {id: g03, question: 刑法常识考点怎么理解, expect_ids: [863]}
+  - {id: g04, question: 行政法常考什么内容, expect_ids: [864]}
+  - {id: g05, question: 公务员法有哪些必考点, expect_ids: [864]}
+  - {id: g06, question: 中国特色社会主义怎么理解, expect_ids: [852]}
+  - {id: g07, question: 社会主义基本特征怎么记, expect_ids: [852, 861]}
+  - {id: g08, question: 秋收起义有什么历史意义, expect_ids: [849, 853]}
+  - {id: g09, question: 西柏坡时期有哪些重要会议, expect_ids: [851, 853]}
+  - {id: g10, question: 诸子百家常考哪些内容, expect_ids: [870]}
+  - {id: g11, question: 中国古代史重点有哪些, expect_ids: [869]}
+  - {id: g12, question: 世界史常考知识点怎么梳理, expect_ids: [873]}
+  - {id: g13, question: 自然地理常识考点有哪些, expect_ids: [879]}
+  - {id: g14, question: 理化生常识有哪些高频考点, expect_ids: [877]}
+  - {id: g15, question: 新中国重大科技成就怎么记, expect_ids: [874]}
+  - {id: g16, question: 通货膨胀是什么怎么理解, expect_ids: [865, 866]}
+  - {id: g17, question: 古代中央集权制度怎么演变, expect_ids: [869, 870]}
+  - {id: g18, question: 洞庭湖在湖南地理常识里怎么考, expect_ids: [859, 881]}
+  - {id: g19, question: 恩格尔系数怎么判断生活水平, expect_ids: [868]}
+  - {id: g20, question: 比重怎么算, expect_ids: [868]}
+  # ── 数据分析核心讲义.md（材料346，数据科学向，10 题）──
+  - {id: g21, question: 马氏距离的核心优势是什么, expect_ids: [994]}
+  - {id: g22, question: 曼哈顿距离的优缺点和适用场景, expect_ids: [983, 984]}
+  - {id: g23, question: 切比雪夫距离的公式怎么理解, expect_ids: [985, 986]}
+  - {id: g24, question: 闵可夫斯基距离怎么统一多种度量, expect_ids: [989, 990]}
+  - {id: g25, question: 协方差和相关系数怎么计算, expect_ids: [993, 995]}
+  - {id: g26, question: 距离计算前为什么要做数据标准化, expect_ids: [1003]}
+  - {id: g27, question: 极值标准化和标准差标准化有什么区别, expect_ids: [1004, 1005]}
+  - {id: g28, question: 不同数据类型怎么选距离算法, expect_ids: [1007]}
+  - {id: g29, question: 工业异常检测用什么距离场景, expect_ids: [1010]}
+  - {id: g30, question: 距离计算有哪些高频误区, expect_ids: [1013]}

@@ -1,0 +1,172 @@
+# ============================================================
+# 伴考 · 底盘配载图（docker-compose.yml）
+# v4 点亮三箱：大门 + 后端 + 数据库（前端并入大门发静态页）——
+# 一次点一只，每加一只都当场单测过再加下一只。
+# 本机开发与将来云服务器，跑的是同一份文件。
+# ============================================================
+name: bankao
+
+services:
+  # ── 数据库箱：PostgreSQL 16 + pgvector 向量检索扩展（官方精装图）──
+  db:
+    image: pgvector/pgvector:pg16   # 现成"精装房"：PG16 里已内置 vector 扩展
+    container_name: bankao-db
+    environment:
+      POSTGRES_USER: bankao
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-dev_only_123}   # 口令真源在 .env；公网部署改 .env 后须在 db 箱 ALTER USER 对齐（README 有步骤）
+      POSTGRES_DB: bankao
+    ports:
+      - "5432:5432"   # 5432 端口对 laptop 本机敞开，方便工具直连看数据
+    volumes:
+      - db_data:/var/lib/postgresql/data   # 真实数据文件落在硬盘专用体积，删箱不删数据
+    healthcheck:
+      # 容器的"生命体征"探针：pg_isready 问数据库"能接客了吗"
+      test: ["CMD-SHELL", "pg_isready -U bankao -d bankao"]
+      interval: 5s      # 每 5 秒探一次
+      timeout: 3s       # 3 秒不回答算这次失败
+      retries: 10       # 连败 10 次才判死
+
+  # ── 后端箱：FastAPI（按 backend/Dockerfile 现场装箱）──
+  backend:
+    build:
+      context: .                  # 装箱车间=代码根（要同时见到账本和 backend/）
+      dockerfile: backend/Dockerfile
+    image: bankao-backend:latest  # 明写镜像名：默认名=目录名+服务名，换目录即换名会
+                                  # 与 bot 的显式 tag 撞车（2026-09-12 服务器点火实锤：
+                                  # 本机 untitled 目录不撞，/opt/bankao 目录必炸）
+    container_name: bankao-backend
+    env_file:
+      - .env                # 密钥文件（git 永不收录）：DEEPSEEK_API_KEY 从此挂上
+    environment:
+      # 箱内互访用服务名 db 当主机名——同一底盘的网络里，箱子凭名字找彼此；
+      # 这个变量一上线，backend/db.py 的连接串真源就改口，代码零改动
+      DATABASE_URL: postgresql+psycopg://bankao:${DB_PASSWORD:-dev_only_123}@db:5432/bankao
+      # S6 真机血案：容器默认 UTC，调度器按「服务器本地时」跑——不钉这颗，
+      # 用户设 20:00 提醒实际凌晨 4 点发。全栈统一东八区（03:00 清账同受此护）
+      TZ: Asia/Shanghai
+      # S6 B 段（D26 甲推送腿的地址）：提醒发 QQ 走 napcat 箱的 OneBot HTTP server；
+      # token 值与 NapCat 面板 HTTP server 里填的是同一串——.env 改值时两边一起改
+      ONEBOT_API_URL: http://napcat:3000
+      ONEBOT_API_TOKEN: ${ONEBOT_API_TOKEN:-bankao-local-push}
+      # D65 加好友指路：绑定卡展示的 bot 号（GET /api/qq/binding 的 bot_number 读它）。
+      # 与上面 napcat 箱的 ACCOUNT 同一个号——换号时两处一起改（两处同值=一笔欠账，
+      # 但换号属稀罕操作，先记在注释里不另抽真源）
+      BOT_QQ: "3401447591"
+      # S9 四刀记忆系统用redis：热缓存（会话窗口/压缩触发计数/幂等键）。
+      # 摘要与长期记忆仍落 PG——Redis 只是热路径，挂了回退查库即可。
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "8000:8000"               # 与本机 dev 时期同端口，前端那根 fetch 线不用改
+    volumes:
+      - ./backend:/app/backend    # 开发回路：本机代码"吊上船"，改存盘箱内即见
+      - ./data/uploads:/data/uploads   # 资料入库原件仓库（D5 甲案）：删号时按 PRD 13.6 连目录清
+      - ./data/backups:/data/backups   # D50 甲：每日全家福仓库（宿主 ./data/backups，异地拷贝从这拿）
+    command: uv run --no-sync uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir backend
+    depends_on:
+      db:
+        condition: service_healthy   # 等数据库脉搏正常才开后端——顺序写在纸上，不靠运气
+      redis:
+        condition: service_started   # S9·W6：不等 Redis 脉搏——箱灭 backend 也要起（降级铁律的开机面；等 healthy 杀箱实验冷启动过不了关）
+
+  # ── Redis 箱（S9）：会话热缓存 ──
+  # 不开对外端口：只有 backend 与 bot 两个箱需要它，凭服务名走内网。
+  # 内存上限 256MB 上限写死（maxmemory-policy noeviction）——
+  # 会话缓存宁可不写也不能被静默淘汰：LRU 把正在用的会话踢掉，
+  # 会让学生体验到「上一句还在，这一句就忘了」，比慢一步严重得多。
+  # 到了上限宁可写失败让代码回退 PG，也不丢已写入的会话。
+  redis:
+    image: redis:7-alpine
+    container_name: bankao-redis
+    command: >
+      redis-server
+      --save ""
+      --appendonly no
+      --maxmemory 256mb
+      --maxmemory-policy noeviction
+    volumes:
+      # 注：上面 save "" + appendonly no = 只当缓存不持久化（挂了重建即可，
+      # 持久化反而会占盘还制造「以为Redis 是真账」的错觉）
+      - redis_data:/var/lib/redis   # 保留卷：给后续真需要持久化的键留位置
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  # ── QQ 通道箱①（S6 B 段 · PRD 16 章四箱之"QQ 通道"）：NapCat——登 QQ 小号的容器 ──
+  # 它只干一件事：让一个小号在服务器上保持 QQ 在线，并按面板配置
+  # 收发消息走 OneBot11 协议（HTTP server :3000 收指令 / HTTP client 推事件给 bot）。
+  # 登录态挂 ./data/napcat——重启不重扫码。首次登录=用户的手（网页面板扫码）。
+  napcat:
+    image: mlikiowa/napcat-docker:latest
+    container_name: bankao-napcat
+    environment:
+      - NAPCAT_UID=0
+      - NAPCAT_GID=0
+      - TZ=Asia/Shanghai   # 同款补钉：NapCat 日志也在走 UTC（20:30 提醒案里一并实锤）
+      # entrypoint 脚本真值考据（S6 血案两轮）：口令变量名是 WEBUI_TOKEN（旧写 WEBTOKEN 无人认，
+      # token 才变随机值）；且仅首启（webui.json 不存在时）写入——改口令要进面板，环境变量只对新卷有效
+      - WEBUI_TOKEN=${WEBUI_TOKEN:-bankao-napcat-ui}
+      # ACCOUNT=登录时传 -q 快速登录：卷里有票（nt_qq/global/nt_data/Login）即免扫码
+      # 换成自己的 bot 小号：面板扫码登录一次即持久；BOT_QQ（backend 箱）与本行同值，两处一起改
+      - ACCOUNT=3401447591
+    ports:
+      - "6099:6099"                 # 管理面板：扫码登录、网络配置都在这页
+    volumes:
+      - ./data/napcat:/app/napcat     # NapCat 自身数据（网络配置/日志/插件）
+      - ./data/qq:/app/.config/QQ     # QQ 登录态在这——S6 真机血案：漏挂这卷=重建即丢登录重扫
+    restart: unless-stopped
+
+  # ── QQ 通道箱②：bot 接线员——与 backend 同镜像同代码挂载（D28 甲一本账）──
+  # 全部业务只有 backend/qq_bot.py 那几十行：收私聊→handle_qq_event→回话。
+  # 不开对外端口：napcat 走内网把它当 POST 目标即可；炸了也只影响 QQ 腿（故障表 7）。
+  bot:
+    # 不再自建（build 删）：直接吃 backend 熬好的同名镜像——「一镜像两容器」至此成真，
+    # 旧注释的"共享缓存不产第二份"以前只对了层缓存，今天连名字都归一了
+    image: bankao-backend:latest
+    container_name: bankao-bot
+    env_file:
+      - .env                           # 大脑要用的 DEEPSEEK_API_KEY 等，同 backend 一份账
+    environment:
+      DATABASE_URL: postgresql+psycopg://bankao:${DB_PASSWORD:-dev_only_123}@db:5432/bankao
+      # S6 时区血案的补钉（2026-09-14 公网日志案）：当年只给 backend 钉了 TZ，
+      # bot 日志一直在走 UTC——业务零伤害但排障时刻差 8 小时，指鹿为马的坑
+      TZ: Asia/Shanghai
+      # S6 真机甲案：bot 的回话腿也走 push_via_onebot——这两个变量它要读，
+      # 与 backend 同一本地址账（漏配=推送腿瞎了直接 False）
+      ONEBOT_API_URL: http://napcat:3000
+      ONEBOT_API_TOKEN: ${ONEBOT_API_TOKEN:-bankao-local-push}
+      # S9：bot 箱与 backend 箱共用同一份会话热缓存（多端同脑家法：
+      # 网页聊到一半切 QQ，记忆不能断在半路）
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ./backend:/app/backend
+    command: uv run --no-sync uvicorn backend.qq_bot:app --host 0.0.0.0 --port 8080
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started   # S9·W6：不等 Redis 脉搏——箱灭 backend 也要起（降级铁律的开机面；等 healthy 杀箱实验冷启动过不了关）
+    restart: unless-stopped
+
+  # ── 大门箱：Nginx——发静态页 + 转发 /api，全场景唯一对外门牌 ──
+  nginx:
+    image: nginx:alpine             # 现成传达室，只挂配置和产物，无需 build
+    container_name: bankao-gate
+    ports:
+      - "80:80"                     # 对 laptop 只开这一道正门（8000/5173 是施工侧门）
+    volumes:
+      - ./frontend/dist:/usr/share/nginx/html:ro      # 前端出货品，只读递送
+      - ./infra/nginx.conf:/etc/nginx/conf.d/default.conf:ro   # 值班手册
+    depends_on:
+      - backend
+
+# 命名体积：Docker 在硬盘上圈的地块，和集装箱的生死无关
+volumes:
+  db_data:
+  # ── Redis（会话热缓存 · S9 四刀预留）──
+  # 只存「丢了不影响正确性」的东西：会话窗口缓存、20 轮压缩的触发计数、
+  # 幂等键。压缩摘要与长期记忆一律落Postgres（数据库真账家法），
+  # Redis 挂了系统照常跑，只是回退成每次查 PG。
+  redis_data:
