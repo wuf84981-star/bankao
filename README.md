@@ -1,148 +1,320 @@
-# 伴考（BanKao）· 私人备考 AI Agent
+<!-- 结构基于 Best-README-Template（othneildrew）重构，2026-10-29 -->
+<a id="readme-top"></a>
 
-> 一句话：一个陪你备考的 AI 教练——帮你排复习计划、盯打卡、沉淀错题、隔 QQ 或网页随时提问，并且把这一切记在**你自己的**服务器上。
->
-> 当前状态：**单机熟人期**——在你自己的电脑上完整可用（网页 + QQ 双通道），尚未做公网部署。
+<!-- PROJECT SHIELDS -->
+[![MIT License][license-shield]][license-url]
+[![Python][python-shield]][python-url]
+[![React][react-shield]][react-url]
+[![FastAPI][fastapi-shield]][fastapi-url]
+[![PostgreSQL][pg-shield]][pg-url]
+[![Docker][docker-shield]][docker-url]
+[![pytest 351 passing][tests-shield]][tests-url]
+
+<!-- PROJECT LOGO -->
+<br />
+<div align="center">
+  <a href="https://github.com/wind989/bankao">
+    <img src="frontend/public/favicon.svg" alt="Logo" width="80" height="80">
+  </a>
+
+<h3 align="center">伴考 · BanKao</h3>
+
+  <p align="center">
+    私人备考 AI Agent：排计划、盯打卡、沉错题、出强化、判分数——网页 + QQ 双通道，全部账本记在你自己的服务器上。
+    <br />
+    <a href="#快速开始"><strong>本地跑起来 »</strong></a>
+    <br />
+    <br />
+    <a href="https://github.com/wind989/bankao/issues/new?labels=bug">Report Bug</a>
+    &middot;
+    <a href="https://github.com/wind989/bankao/issues/new?labels=enhancement">Request Feature</a>
+  </p>
+</div>
+
+<!-- TABLE OF CONTENTS -->
+<details>
+  <summary>目录</summary>
+  <ol>
+    <li><a href="#项目简介">项目简介：解决什么痛点</a></li>
+    <li><a href="#核心亮点">✨ 核心亮点</a></li>
+    <li><a href="#技术栈">🛠️ 技术栈</a></li>
+    <li><a href="#效果图">📷 效果图</a></li>
+    <li><a href="#快速开始">🚀 快速启动</a></li>
+    <li><a href="#目录结构">📁 项目目录说明</a></li>
+    <li><a href="#使用示例">📖 使用示例与接口说明</a></li>
+    <li><a href="#后续规划">📋 后续规划</a></li>
+    <li><a href="#参与贡献">参与贡献 / 许可证 / 联系 / 致谢</a></li>
+  </ol>
+</details>
 
 ---
 
-## 它能干什么
+<!-- ABOUT THE PROJECT -->
+## 项目简介
 
-**网页端**（浏览器打开即用）：
-- 和备考教练对话：流式打字效果、支持发图（拍错题、传讲义，OCR 转写后进知识库）
-- 复习计划：按考试日期倒排、可整版重排、可手动改单条、超载会被确定性校验墙拦下
-- 打卡与错题账：说一声「完成了」它就记账；错题沉淀成册，按薄弱点出强化练习（多选/简答）
-- 资料仓：上传讲义（PDF / Word(.docx) / TXT / MD）自动切块、向量化入库，对话中带引用出处地回答
-- 联网兜底开关（默认关）：聊天输入框上的地球开关，管着「讲义之外」的两条路——**关着=严格讲义模式**：讲义里查不到就直说「知识库无相关资料」，既不碰外网、也不用通用常识补答；开着=才准联网查（Tavily，答案第一句注明「来自网络」附链接）和常识兜底（带声明）
-- 模型切换：聊天输入框上的芯片下拉钮，DeepSeek / 通义千问 / 智谱 GLM 七个型号随你换（网页、QQ、出题判分全线同一个脑子）；平台钥匙没配的型号灰显说明原因，`.env` 补齐即点亮。菜单里每个型号标着费率（×1～×4），越贵的脑子扣积分越快。OCR、向量点火等专用腿不随切换
-- 积分与签到：侧栏一张积分卡管钱包——注册礼 1000 分、每日签到 +200、连签恰满 7 天再加 100；只有让模型开口才扣钱（1 分 = 100 tokens，按所选型号费率放大，向上取整），看计划、查错题、打卡、签到全部免费。每笔进出都记流水账（余额从流水导出，无人能偷偷改数）；余额烧穿了会拒聊并提示去签到，第二天满血复活
-- 设置页真账：教练叫什么、人设四型（严师/学长学姐/学习搭子/自定义）、每日提醒时点——保存即落库，聊天里让它改的与页面上改的是同一本账；自定义人设有底线（不代写、不辱骂，数据账优先）
-- 记忆系统：它记住你的考试档案、偏好、进度；你能查、能确认、能命令它遗忘
-- 会话管理：多会话列表、懒加载翻页、历史可回看可删除
-- 账号体系：邮箱验证码注册、找回密码、邀请制已退役（开放注册）
+<a id="项目简介"></a>
 
-**QQ 端**（可选通道，挂一个小号）：
-- 在 QQ 私聊机器人 = 换一种用法，同一个大脑、同一本账：能聊天、能发图、到点主动推每日提醒
-- 首次绑定走网页「设置」页的「QQ · 绑定」组：先扫好友码把助教加为好友（普通 QQ 号不加好友，消息到不了机器人），再点「拿 6 位绑定码」，把这串码在 QQ 私聊里发给它即可（码 10 分钟有效，绑成后网页自动翻「已绑定」）
-- 网页侧栏能看到 QQ 对话（带徽标、只读，想接着聊去 QQ）
+**痛点**——自学备考的人普遍卡死在五件事上：
 
-**管理侧**（户主可见）：
-- 用户清单（含每户积分余额列）、用量面板（注册/登录/开口/签到等事件的周活跃统计）、户主钥匙机制、积分手动调整（增减都走同一本流水，留痕可查）
+| 痛点 | 现状 | 伴考的答案 |
+|---|---|---|
+| 计划不会倒排 | 距离考试还剩几天、每天该学多久，全凭感觉 | 登记考试类型+日期后，按考试日**倒排**逐日铺任务，末日必须恰好是考试前一日，超载会被纯函数校验墙整版打回 |
+| 讲义是死的 | PDF/Word 躺在网盘，做题时查不到那一页 | 资料仓切块向量化入库，**三路召回**（向量+中文全文+关键词模糊）带引用出处作答；查不到就直说「知识库无相关资料」 |
+| 通用大模型不教学 | 直接报答案、替写作文、讲义外的事靠幻觉补 | 六节点教学状态机引导思路；**客观题对错由程序裁决**不归模型嘴；严格讲义模式默认禁联网禁常识补答 |
+| 学完没账 | 错在哪、为什么错、哪薄弱，没有系统记得 | 错题自动归「错误模式账」（老毛病计数/新错开账），按未结案错题数出强化题，判分回写掌握度，下次排计划读这本账——**学习闭环** |
+| 数据在别人家 | 学习记录、错题本存在第三方 SaaS | 全部数据落在你自己的 PostgreSQL；`.env` 密钥永不进库，QQ/网页双通道同一本账 |
 
-**底盘自带**：
-- 每日 04:00 自动备份整库 + 资料仓到磁盘，滚动保留 7 份（恢复口令写在代码注释里，删库救回演练过的才算数）
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-## 架构总览
+<!-- FEATURES -->
+## ✨ 核心亮点
 
-```
-浏览器 ──► nginx（大门 :80，发前端静态页 + 转发 /api）
-              │
-              ├──► backend（FastAPI :8000，大脑 + 调度器 + 备份作业）
-              │       │
-              │       ├──► db（PostgreSQL 16 + pgvector 向量检索）
-              │       │
-              └──► bot（QQ 接线员）◄──► napcat（QQ 小号在线，OneBot11）
-```
+<a id="核心亮点"></a>
 
-五个服务全部容器化，`docker-compose.yml` 一键起停。调度器（APScheduler 进程内）管三张日程：03:00 清到期事件、每 5 分钟提醒派发、04:00 备份。
+1. **RAG 三路召回 + RRF 融合**（`backend/search.py`）
+   pgvector **HNSW 向量腿**（语义）、**jieba 分词 → tsvector 全文腿**（中文精确词，GIN 索引）、**pg_trgm 关键词腿**（错别字/模糊拼写）并行各取 top20，**RRF（k=60）融合**成统一榜单，再用相对置信阈值（0.30）砍掉弱命中、top3 进模型上下文。回答带出处；配 **goldset 评测架**（`backend/evals/`，召回率/倒数排名可量化重跑）。
+2. **自研 29 工具 function-call 循环 + LangGraph 六节点教学状态机**（`backend/orchestrator.py` / `teaching_graph.py`）
+   对话大脑挂 29 手工具（排计划/打卡/出题/判分/查账/存档……），工具循环 6 轮封顶防发散。**判定权全归程序**：客观题对错由代码裁（`question_validator.grade_one`）、错题归类锁五档枚举、计划落库前过纯函数校验墙 V1~V6——模型只提议，代码执法。
+3. **SSE 流式输出**（`backend/main.py` `/api/chat/stream`）
+   `StreamingResponse` + `text/event-stream`：增量 delta 帧直透前端打字机；**注释帧心跳**抗代理层空闲断线；`X-Accel-Buffering: no` 让 nginx 关响应级缓冲不攒包；断流/未收敛/电厂故障各有独立 error 帧语义。
+4. **双通道同一本账 + 按用户数据隔离**
+   网页（REST/SSE）与 QQ（NoneBot2 收 OneBot11 事件）两条腿**汇进同一个 orchestrator**：同一个脑子、同一套 23 张表。每一手工具的每条 SQL 都带 `user_id` 票闸（程序级强制，跨户取账直接查空），不存在「换个 id 看看别人数据」的路。
+5. **学习闭环回流线**
+   档案（`exam_profiles`）→ 倒排计划（读掌握度账倾斜弱项）→ 打卡（积压即提议整版重排）→ 判分（错题归 `error_patterns`，同错计数）→ 强化出题（额度=未结案错题数、已答自动排除）→ 掌握度回写 → 影响下一轮计划。环环有代码有测试。
+6. **工程质量**
+   **351 个离线单测**全绿：假件只注入外部服务（假电厂/假 OCR/假邮件腿/假联网传输），零真网络零真烧钱；每日 04:00 自动备份整库+资料仓滚动留 7 份；积分余额**从流水账导出**，无人能偷偷改数。
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+<!-- BUILT WITH -->
+## 🛠️ 技术栈
+
+<a id="技术栈"></a>
 
 | 层 | 选型 |
 |---|---|
-| 后端 | Python 3.12 · FastAPI · SQLAlchemy 2 · Alembic · APScheduler |
-| 大脑 | DeepSeek API（对话/工具循环）+ 阿里 DashScope（OCR 视觉） |
-| 前端 | React 19 · TypeScript · Vite · Tailwind CSS 4 |
-| 数据 | PostgreSQL 16 + pgvector（向量检索做知识点/资料语义搜索） |
-| QQ 通道 | NapCat（Docker）+ OneBot 11 HTTP |
-| 认证 | JWT + bcrypt 哈希 + 邮箱验证码（SMTP） |
+| **前端** | React 19 · TypeScript · Vite · Tailwind CSS 4（7 个页面：Chat / Login / Materials / Plan / Memory / Settings / Admin） |
+| **后端** | Python 3.12 · FastAPI · SQLAlchemy 2 · Alembic · APScheduler（uv 管依赖与锁） |
+| **AI 编排** | LangGraph（教学状态机）· 自研 29 工具 function-call 循环 · MCP · 多模型（DeepSeek / 通义千问 / 智谱 GLM，7 型号热切换） |
+| **数据** | PostgreSQL 16 + pgvector（HNSW 向量索引）+ pg_trgm/tsvector · Redis 7 |
+| **消息通道** | NoneBot2 · NapCat（OneBot 11 HTTP）· 邮箱验证码 SMTP |
+| **认证与安全** | JWT + bcrypt + 验证码账 · 全链 user_id 票闸 · 密钥外置 `.env` |
+| **部署** | Docker Compose 六容器（nginx :80 大门 / backend :8000 / bot / db / redis / napcat）· Nginx 反代 + 静态递送 |
 
-## 目录结构
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-```
-untitled/
-├── backend/            # FastAPI 后端（main.py 路由、qq.py OneBot 事件、
-│                       #  orchestrator/tools 大脑工具循环、jobs.py 定时任务、
-│                       #  plan_validator 计划校验墙、mail.py SMTP 腿……）
-├── frontend/           # React 前端（src/pages 三页：Chat/Login/Admin；dist 为出货品）
-├── migrations/         # Alembic 数据库迁移（表的户口登记簿）
-├── tests/              # 离线单测 326 例（全部假件注入，零真网络零真烧钱）
-├── infra/nginx.conf    # 大门值班手册
-├── data/               # 运行数据：uploads 资料仓 / backups 全家福 / napcat QQ 登录态
-├── docker-compose.yml  # 五箱配载图（本机与云服务器跑同一份）
-└── .env                # 密钥文件（绝不进 git；见下表）
-```
+<!-- SCREENSHOTS -->
+## 📷 效果图
 
-## 快速开始
+<a id="效果图"></a>
 
-**前置**：装好 Docker Desktop、Node.js（18+）、[uv](https://docs.astral.sh/uv/)。
+> 截图位待补：本地跑起来后截下面四张放进 `docs/images/` 目录即可让本节点亮（命名保持一致）。
+
+| 建议截图 | 文件名 | 展示什么 |
+|---|---|---|
+| 聊天页 | `docs/images/chat.png` | 流式打字机 + 引用出处 + 积分卡 + 模型/地球开关 |
+| 计划页 | `docs/images/plan.png` | 考试日倒排日历 + 打卡状态 |
+| 资料仓 | `docs/images/materials.png` | PDF/Word 入库与切块状态 |
+| 记忆页 | `docs/images/memory.png` | 考试档案 / 掌握度 / 错误模式账 |
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+<!-- GETTING STARTED -->
+## 🚀 快速启动
+
+<a id="快速开始"></a>
+
+### 前置依赖
+
+- Docker Desktop（跑六容器）
+- Node.js 18+（构建前端）
+- [uv](https://docs.astral.sh/uv/)（跑迁移与测试）
+- 三把可选的 API 钥匙：DeepSeek（对话腿，必填）、阿里云百炼（OCR，必填）、Tavily / 智谱（可选功能，不配不坏）
+
+### 安装与启动
 
 ```bash
-# 1. 进项目目录
-cd untitled
+# 1. 克隆仓库
+git clone https://github.com/wind989/bankao.git
+cd bankao
 
-# 2. 构建前端（nginx 直接递送这份静态产物）
+# 2. 配密钥：模板复制一份，按注释填钥匙
+cp .env.example .env
+
+# 3. 构建前端（nginx 直接递送这份静态产物）
 cd frontend && npm ci && npm run build && cd ..
 
-# 3. 配置密钥：cp .env.example .env，按注释填表里那几把钥匙
-# 4. 起五箱（首次会 build 后端镜像）
+# 4. 起六箱（首次会 build 后端镜像；国内网络慢可多等）
 docker compose up -d --build
 
-# 5. 建表：跑一次数据库迁移（宿主连的是 compose 暴露在 5432 的 db 箱）
+# 5. 建表：跑一次数据库迁移（宿主连 compose 暴露在 5432 的 db 箱）
 uv run alembic upgrade head
 ```
 
-打开 `http://localhost` 即见登录页。**先注册**：若 `.env` 配了 `BANKAO_ADMIN_EMAIL`，用这个邮箱注册出来的账号自动成为户主（可见管理页）。
+打开 `http://localhost` 即见登录页，**先注册**：`.env` 里 `BANKAO_ADMIN_EMAIL` 配的邮箱注册出的账号自动成为户主（可见管理页）。
 
-### .env 需要的五个键（外加两个可选键、三个底盘键）
+### `.env` 键一览
 
 | 键 | 干什么 | 去哪申请 |
 |---|---|---|
-| `DEEPSEEK_API_KEY` | 对话大脑（默认模型；聊天里可换的 DeepSeek 两型号也吃这把钥匙） | DeepSeek 开放平台 |
-| `DASHSCOPE_API_KEY` | 图片 OCR（拍题识别）+ 资料点火（通义两型号若要换用也吃这把） | 阿里云百炼 |
-| `SMTP_USER` / `SMTP_PASS` | 发注册/找回验证码邮件（465 端口 SSL） | 任意邮箱的 SMTP 授权码（QQ 邮箱即可） |
-| `BANKAO_ADMIN_EMAIL` | 户主邮箱——此邮箱注册者直升管理员 | 你自己定 |
-| `TAVILY_API_KEY`（可选） | 联网兜底搜索——只在用户打开聊天里的地球开关才会用到 | app.tavily.com 免费注册；改了 `.env` 要 `docker compose up -d` 重建容器才生效（env 文件只在建容器时读一次）。没配也不算坏：那条腿会如实报故障，不影响其余功能 |
-| `ZHIPU_API_KEY`（可选） | 智谱 GLM 三个型号——只在聊天里把模型菜单换到 GLM 才会用到 | open.bigmodel.cn 免费注册；同上，改 `.env` 后重建容器。没配时菜单里 GLM 灰显「未配钥匙」，其余功能零影响 |
-| `DB_PASSWORD`（底盘） | 数据库口令，compose 与连接串的唯一真源；默认值是熟人期开发值 | 见下方换口令步骤 |
-| `ONEBOT_API_TOKEN` / `WEBUI_TOKEN`（底盘） | QQ 推送腿内部票与 NapCat 面板口令；`ONEBOT_API_TOKEN` 改值须与 NapCat 面板里填的同步 | 自建随机串即可 |
+| `DEEPSEEK_API_KEY` | 对话大脑（默认模型） | platform.deepseek.com |
+| `DASHSCOPE_API_KEY` | 图片 OCR（拍题）+ 资料点火 | 阿里云百炼 |
+| `SMTP_USER` / `SMTP_PASS` | 注册/找回验证码邮件（465 SSL） | 任意邮箱 SMTP 授权码 |
+| `BANKAO_ADMIN_EMAIL` | 户主邮箱，此邮箱注册直升管理员 | 你自己定 |
+| `TAVILY_API_KEY`（可选） | 联网兜底（聊天里地球开关开了才用） | app.tavily.com |
+| `ZHIPU_API_KEY`（可选） | 模型菜单 GLM 三路 | open.bigmodel.cn |
+| `DB_PASSWORD` / `ONEBOT_API_TOKEN` / `WEBUI_TOKEN` | 底盘三键：库口令 / QQ 推送票 / NapCat 面板口令 | 默认值是熟人期开发值 |
 
-> 密钥值只待在 `.env`，永远不进 git、不进日志。数据库口令默认 `dev_only_123` 是**熟人期开发值，任何人部署到公网前必须换掉**——换法两步：① 改 `.env` 里的 `DB_PASSWORD`；② 进 db 箱把真库对齐：`docker compose exec db psql -U bankao -d bankao -c "ALTER USER bankao WITH PASSWORD '新口令'"`，然后 `docker compose up -d` 重建。
+> **上公网前必换** `DB_PASSWORD`：① 改 `.env`；② 进 db 箱对齐真库：
+> `docker compose exec db psql -U bankao -d bankao -c "ALTER USER bankao WITH PASSWORD '新口令'"`，然后 `docker compose up -d` 重建。
+> 密钥值只待在 `.env`——永远不进 git、不进日志。
 
-### 想连 QQ 通道（可选）
+### QQ 通道（可选）
 
-`docker compose up` 后 NapCat 面板在 `http://localhost:6099`（口令见 compose 里的 `WEBUI_TOKEN`）：用一个小号扫码登录，在其网络设置里配 Two 个 HTTP 服务——收消息推给 `bot:8080`、发消息走 `napcat:3000`（服务间互访用箱名）。之后给这个 QQ 号发私聊即可对话；网页与 QQ 共用同一本账，互不串道。
+`docker compose up` 后进 NapCat 面板 `http://localhost:6099`（口令=`WEBUI_TOKEN`），小号扫码登录，网络设置配两个 HTTP 服务：收消息推 `bot:8080`、发消息走 `napcat:3000`。之后网页「设置 → QQ 绑定」拿 6 位绑定码、QQ 私聊发码即通。
 
-## 开发模式（改代码不打包）
-
-```bash
-# 后端：compose 里的 backend 箱已挂载 ./backend，--reload 热重载，改存盘即生效
-# 前端：npm run dev 起 vite :5173（代理配置见 vite.config.ts，出货口仍是 :80）
-```
-
-改了 `Dockerfile` 或 compose 挂载属于**镜像层**改动，`restart` 无效，要 `docker compose up -d --build` 换血。
-
-## 测试
+### 开发模式与测试
 
 ```bash
-uv run --with pytest -q python -m pytest tests/
+# 后端热重载：compose 已挂载 ./backend（--reload），改存盘即生效
+# 前端开发口：cd frontend && npm run dev（:5173，出货口仍是 :80）
+uv run --with pytest -q python -m pytest tests/   # 351 例离线单测，零真网络零真烧钱
 ```
 
-家规：单测一律注入假件（假电厂/假 OCR/假邮件腿/假 runner/假联网传输），**绝不让真网络、真邮件、真烧钱进测试**；全部用例离线可跑，跑起来不花一分钱。
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-## 已知边界（诚实清单）
+<!-- ARCHITECTURE / 目录 -->
+## 📁 项目目录说明
 
-- **单机熟人期**：未做公网部署（HTTPS、域名、备案、限流都在路线图上），当前只在自己的电脑/家庭网络可用
-- 改密码不会把旧登录票立刻吊销（JWT 无状态的代价，强制下线是另一本账，未做）
-- 资料仓收 PDF/Word(.docx)/TXT/MD 四种；图片讲义转写与网页链接抓取（PRD 5.1.1 亦承诺）还在路线图上
-- 备份异地副本靠人工拷贝；接对象存储的升级挂在公网部署时一并谈
-- 会话不能重命名；QQ 端开新会话需发「新对话」口令（网页端点按钮即可）
+<a id="目录结构"></a>
 
-## 怎么参与
+```
+bankao/
+├── backend/               # FastAPI 后端（大脑所在）
+│   ├── main.py            #   51 个 REST/SSE 路由（网页腿）
+│   ├── qq.py              #   OneBot11 事件腿（QQ 消息进、主动推送出）
+│   ├── orchestrator.py    #   双通道汇合点：29 工具 function-call 循环
+│   ├── teaching_graph.py  #   LangGraph 六节点教学状态机
+│   ├── tools.py           #   工具手：排计划/打卡/出题/判分/存档/查账……
+│   ├── search.py          #   RAG 三路召回 + RRF 融合
+│   ├── plan_validator.py  #   计划纯函数校验墙（V1~V6）
+│   ├── question_validator.py / questioning.py  # 客观题程序裁决 / 主观题要点对照
+│   ├── jobs.py            #   APScheduler 三张日程：03:00 清事件/每 5 分钟提醒/04:00 备份
+│   ├── points.py / short_memory.py / gaps.py / analytics.py …  # 积分流水/会话摘要/缺口账/埋点
+│   └── evals/             #   检索评测架（goldset + 召回指标，可重跑）
+├── frontend/              # React 19 + TS + Tailwind 4；src/pages 七页；dist 出货品
+├── migrations/            # Alembic 迁移（23 张表的户口登记簿）
+├── tests/                 # 351 离线单测（假件注入外部服务，数据库走真箱）
+├── infra/nginx.conf       # 大门值班手册（静态递送 + /api 反代 + SSE 放行）
+├── docker-compose.yml     # 六箱配载图（本机与云服务器跑同一份）
+├── .env.example           # 密钥模板（真 .env 永不进库）
+├── data/                  # 运行数据（不入库）：uploads 资料仓 / backups 备份 / napcat 登录态
+└── LICENSE                # MIT
+```
 
-- **提问题/想法**：先说场景（你想用它做什么、在哪一步卡住），本项目的决策流程是「需求 → 拍板形状 → 施工」，跳步的补丁容易被毙
-- **提 PR**：跟着现有风格走——代码注释用简体中文、变量名英文；任何行为改动必须让 `pytest` 全绿，新功能补离线测试例；数据库变更必须走 `alembic revision --autogenerate` 且检查生成物（误拆别人家的表是历史上真踩过的坑）
-- **读代码从哪进**：请求的路由都在 `backend/main.py`（网页）与 `backend/qq.py`（QQ 事件），两条腿最终汇进同一个 `orchestrator.py`（大脑工具循环）——找功能先看它挂在哪个腿，找原理直接看汇合点
-- **许可**：本项目暂未选择开源许可证（默认保留全部权利）。介意这一点的朋友请先与维护者联系。
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
----
+<!-- USAGE EXAMPLES -->
+## 📖 使用示例与接口说明
 
-*这份 README 与代码同日核对（2026-09-11）。跑不起来而照上文没做错什么的话，这算 bug——欢迎反馈。*
+<a id="使用示例"></a>
+
+### 一段真实对话剧本（闭环全链路走一遍）
+
+```text
+你：我 12 月 20 号考考研数学一，工作日每天晚 3 小时，周末 6 小时
+它：（调 save_exam_profile 存档）已登记：考研数学一 · 2026-12-20。要我现在按这个日期倒排一份计划吗？
+你：排
+它：（generate_plan 读档案+掌握度账 → 校验墙 V1~V6 放行 → 草案 v1）共 N 天逐日任务，末日恰是考前一天。确认生效吗？
+你：确认            （activate_plan，旧版自动归档）
+——两周后——
+你：今晚的高数极限那组完成了，最后一题老毛病又错了
+它：（check_in 打卡记账 → 判分归类「计算粗心」第 3 次 → update_mastery 建议「极限·薄弱」你点头落账）
+    要不要按错题账出 3 道极限强化题？
+你：出              （quiz 出题：额度按未结案错题数，答过的自动排除）
+它：（你报答案 → grade_answer 客观题程序裁决对错，简答走要点对照+点评）
+    对 2 错 1。错题已归账。下次排计划会把极限加权。
+```
+
+### 接口说明（共 51 个，全部 JWT 鉴权 + user_id 票闸）
+
+启动后访问 **`http://localhost/docs`** 可看 FastAPI 自动生成的交互式文档（可直接试调用）。下表按模块分组：
+
+| 模块 | 接口 | 说明 |
+|---|---|---|
+| 账号（6） | `POST /api/register/send-code` · `/api/register` · `/api/login` · `/api/reset/send-code` · `/api/reset/confirm` · `GET /api/me` | 邮箱验证码注册/登录/找回密码 |
+| 对话（7） | `POST /api/chat` · `/api/chat/stream` · `/api/chat/image` · `GET/POST/DELETE /api/conversations` · `GET /api/history` | **`/api/chat/stream` 即 SSE**：`data: {"delta":…}` 字流 → `{"citations":…}` 引用 → `{"done":{余额,提醒}}`；断线有心跳注释帧 |
+| 计划（5） | `GET /api/plan/summary` · `/api/plan/calendar` · `/api/plan/day` · `POST /api/plan/item/{id}/check` · `POST /api/checkin` | 倒排结果、日历视图、单日清单、页门打卡 |
+| 资料/RAG（6） | `GET/DELETE /api/materials` · `POST /api/parse` · `/api/ingest` · `GET /api/search` · `GET /api/chunks/{id}` | 上传解析（PDF/Word/TXT/MD）→ 切块向量化 → 检索调试 |
+| 记忆（7） | `GET /api/memories` · `POST /api/memories/fact` · `/confirm` · `/forget` · `/mastery` · `POST/DELETE /api/memories/profile` | 档案/偏好/掌握度/错误模式的查、认、忘 |
+| 设置（10） | `GET/POST /api/settings/`（profile · model · teaching · websearch · feynman） | 人设/模型/教学开关/联网开关/费曼模式，页面与聊天同一本账 |
+| 积分（2） | `GET /api/points` · `POST /api/checkin` | 钱包与签到流水 |
+| QQ（2） | `GET /api/qq/binding` · `POST /api/qq/bind-code` | 绑定码签发；OneBot 事件腿在 bot 箱 :8080 |
+| 管理（4） | `GET /api/admin/users` · `/stats` · `/gaps` · `POST /api/admin/points/adjust` | 仅户主 |
+| 系统（2） | `GET /api/health` · `POST /api/echo` | 健康检查/回环 |
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+<!-- ROADMAP -->
+## 📋 后续规划
+
+<a id="后续规划"></a>
+
+- [ ] 公网部署三件套：HTTPS + 域名备案 + nginx 限流（当前仅局域网可用）
+- [ ] 资料仓补形：图片讲义 OCR 转写、网页链接抓取入库（PRD 5.1.1 承诺项）
+- [ ] 会话体验：网页会话重命名；QQ 端「新对话」口令对齐网页按钮
+- [ ] 登录票吊销账：改密码即时踢下线（JWT 无状态的欠账）
+- [ ] 备份异地化：对象存储同步（当前每日 04:00 本地滚动 7 份）
+- [ ] 检索再进一步：goldset 扩金标 + 三路结果 rerank
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+<!-- CONTRIBUTING -->
+## 参与贡献
+
+1. Fork 本仓库，建特性分支（`git checkout -b feature/AmazingFeature`）
+2. 家规三条：代码注释简体中文、变量名英文；**任何行为改动必须让 351 例 pytest 全绿**，新功能补离线测试；数据库变更必须走 `alembic revision --autogenerate` 且人工检查生成物（误拆别人家的表是历史上真踩过的坑）
+3. Push 分支并开 Pull Request
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+<!-- LICENSE -->
+## 许可证
+
+MIT License，见 [LICENSE](LICENSE)。
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+<!-- CONTACT -->
+## 联系
+
+项目问题请开 [GitHub Issues](https://github.com/wind989/bankao/issues)。
+
+Project Link: [https://github.com/wind989/bankao](https://github.com/wind989/bankao)
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+<!-- ACKNOWLEDGMENTS -->
+## 致谢
+
+* [pgvector](https://github.com/pgvector/pgvector) · [LangGraph](https://github.com/langchain-ai/langgraph) · [NoneBot2](https://github.com/nonebot/nonebot2) · [NapCat](https://github.com/NapNapCAT/napcat)
+* [uv](https://docs.astral.sh/uv/) · [FastAPI](https://fastapi.tiangolo.com) · [Vite](https://vite.dev) · [Tailwind CSS](https://tailwindcss.com)
+* README 骨架取自 [Best-README-Template](https://github.com/othneildrew/Best-README-Template)
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+<!-- MARKDOWN LINKS & IMAGES -->
+[license-shield]: https://img.shields.io/github/license/wind989/bankao?style=for-the-badge
+[license-url]: LICENSE
+[python-shield]: https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white
+[python-url]: https://www.python.org/
+[react-shield]: https://img.shields.io/badge/React_19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB
+[react-url]: https://reactjs.org/
+[fastapi-shield]: https://img.shields.io/badge/FastAPI-019442?style=for-the-badge&logo=fastapi&logoColor=white
+[fastapi-url]: https://fastapi.tiangolo.com
+[pg-shield]: https://img.shields.io/badge/PostgreSQL16%2Bpgvector-336791?style=for-the-badge&logo=postgresql&logoColor=white
+[pg-url]: https://www.postgresql.org/
+[docker-shield]: https://img.shields.io/badge/Docker_Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white
+[docker-url]: https://www.docker.com/
+[tests-shield]: https://img.shields.io/badge/pytest-351_passing-649ED2?style=for-the-badge&logo=pytest&logoColor=white
+[tests-url]: tests/
