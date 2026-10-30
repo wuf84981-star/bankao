@@ -27,5 +27,9 @@ backend/evals/reports/
 # 杂项
 NUL
 
+# 本地文档备份/模板：不公开
+README-备份.md
+BLANK_README.md
+
 # QQ 小号好友码：本机能用，但不进公开库（公开=谁都能扫码加小号）
 frontend/public/qq_friend_qrcode.jpg
