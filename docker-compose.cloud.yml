@@ -1,0 +1,32 @@
+# ============================================================
+# 伴考 · 公网演示覆写（docker-compose.cloud.yml）
+# 用法（云服务器项目根，与底图叠挂）：
+#   docker compose -f docker-compose.yml -f docker-compose.cloud.yml up -d
+# 与本地底图的四处不同（全为「公网裸奔 → 穿甲」而生）：
+# ① 侧门全关：5432/8000 不再挂宿主机——扫描器不分演示与运营；
+#    云端看库走 docker compose exec db psql，调后端走大门 8443；
+# ② 正门改 80（跳板）+ 8443（TLS 自签）：无备案域名的国内云 IP，
+#    80/443 标准 Web 端口受备案审查，非标 8443 是当下唯一活路；
+# ③ 值班手册换 infra/nginx.public.conf（HTTPS + 限流版）；
+# ④ QQ 两箱天然不启动（云服务器 .env 不写 COMPOSE_PROFILES 即关；
+#    napcat 端口再上一道保险丝，防 .env 误开时 6099 敞公网）。
+# 本机开发严禁叠挂本文件——侧门一关，宿主的 alembic 迁移与 pytest 全瞎。
+# ============================================================
+
+services:
+  db:
+    ports: !reset []          # 撤 5432 宿主映射
+
+  backend:
+    ports: !reset []          # 撤 8000 宿主映射：一切 API 流量必须过大门（限流闸在其上）
+
+  napcat:
+    ports: !reset []          # 保险丝：profile 误开也不敞 6099 面板（要管它走 SSH 隧道）
+
+  nginx:
+    ports:
+      - "8443:8443"           # 追加：80 沿用底图映射（公网版手册里只做跳转）
+    volumes: !override
+      - ./frontend/dist:/usr/share/nginx/html:ro
+      - ./infra/nginx.public.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./data/certs:/etc/nginx/certs:ro   # 自签证书目录（生成口令见 public.conf 文件头）

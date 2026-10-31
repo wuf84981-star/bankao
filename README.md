@@ -91,11 +91,17 @@
 
 <a id="效果图"></a>
 
-**对话页** —— 流式打字机 + 每日提醒 + 积分卡 + 模型/地球开关：
+**介绍页：**
 
-<img src="docs/images/chat.png" alt="对话页" width="920"/>
+![](./docs/images/介绍页.png)
 
-> 其余三张待补，放进展同名下划线即可：计划页 `plan.png`（考试日倒排日历 + 打卡状态）、资料仓 `materials.png`（PDF/Word 入库与切块状态）、记忆页 `memory.png`（考试档案 / 掌握度 / 错误模式账）。
+**对话页：**
+
+![](./docs/images/对话页.png)
+
+**登录页：**
+
+![](./docs/images/登录页.png)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 

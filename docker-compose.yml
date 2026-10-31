@@ -101,6 +101,10 @@ services:
   napcat:
     image: mlikiowa/napcat-docker:latest
     container_name: bankao-napcat
+    # QQ 通道两箱打包成 profile「qq」（2026-10-31 公网部署刀）：
+    # .env 写 COMPOSE_PROFILES=qq 才起——本机开着，云服务器 .env 不写即天然关
+    # （2G 内存保命 + 腾讯风控掉线无人扫码，公网演示不带 QQ 腿跑）
+    profiles: ["qq"]
     environment:
       - NAPCAT_UID=0
       - NAPCAT_GID=0
@@ -126,6 +130,7 @@ services:
     # 旧注释的"共享缓存不产第二份"以前只对了层缓存，今天连名字都归一了
     image: bankao-backend:latest
     container_name: bankao-bot
+    profiles: ["qq"]   # 与 napcat 同捆：profile 关时接线员也不上岗（详见 napcat 段注释）
     env_file:
       - .env                           # 大脑要用的 DEEPSEEK_API_KEY 等，同 backend 一份账
     environment:
