@@ -9,7 +9,8 @@
  * 思考态：三点相位差波浪动画
  * Toast：顶部中央药丸反馈（图片 / 语音 / 新会话）
  * A：桌面 md+ 左侧 260px 会话侧栏（配额卡 + 真会话列表：新建/点入/删除——S7 五刀 F-08）
- * B：Onboarding 首会话 6 步引导卡（身份→考试→基础→时间→资料→取舍）+ 进度环
+ * （B 号 Onboarding 六步道具屏已删 · 2026-10-31 用户拍板：入口早拆、永不可达的死代码，
+ *   且预填假考试值违「页面永不编造账上没有的东西」家法——真首登引导走对话链 save_exam_profile）
  * ============================================================ */
 
 import { useEffect, useRef, useState, type ReactElement } from "react";
@@ -153,9 +154,6 @@ export default function Chat(): ReactElement {
   const [citOpen, setCitOpen] = useState<{ key: string; title?: string; seq?: number;
     content?: string; err?: string } | null>(null);
   const [apologizeOpen, setApologizeOpen] = useState(false);
-  /* B. Onboarding 引导（S1 道具屏：入口已拆、永不可达——真首登引导归 S8 照聊天链重做） */
-  const [isFirstSession, setIsFirstSession] = useState(false);
-  const [onboardingStep, setOnboardingStep] = useState<1|2|3|4|5|6>(1);
   const endRef = useRef<HTMLDivElement>(null);
   const toastIdRef = useRef(0);
   /* 拍照汇报（S7 四刀 · F-09）：发送前最多攥一张图——后端端点一次一图，
@@ -644,227 +642,6 @@ export default function Chat(): ReactElement {
         <section ref={chatRef}
                  onScroll={(e) => { if (e.currentTarget.scrollTop < 60) loadMore(); }}   // 六刀：到顶续页
                  className="flex-1 space-y-6 overflow-y-auto px-5 py-8 md:px-10 md:py-12">
-          {/* B. Onboarding 首会话 6 步引导 / 正常对话消息流（二选一） */}
-          {isFirstSession ? (
-            <div className="mx-auto max-w-[720px] animate-float-up">
-              {/* B1. 顶环进度 Double-Bezel 大卡 */}
-              <div className="rounded-[1.75rem] p-2 ring-1 ring-ink/5" style={{backgroundColor:"var(--color-mist)"}}>
-                <div className="rounded-[calc(1.75rem-0.375rem)] bg-parchment px-7 py-6" style={{boxShadow:"inset 0 1px 1px rgba(255,255,255,0.9)"}}>
-                  <div className="flex items-center gap-6">
-                    <svg width="72" height="72" viewBox="0 0 48 48">
-                      <circle cx="24" cy="24" r="20" fill="none" stroke="var(--color-mist)" strokeWidth="3.5"/>
-                      <circle cx="24" cy="24" r="20" fill="none" stroke="var(--color-copper)" strokeWidth="3.5" strokeLinecap="round"
-                              strokeDasharray={2 * Math.PI * 20}
-                              strokeDashoffset={2 * Math.PI * 20 * (1 - onboardingStep / 6)}
-                              style={{transition:"stroke-dashoffset 500ms var(--ease-spring-out)", transform:"rotate(-90deg)", transformOrigin:"center"}}/>
-                      <text x="24" y="23" textAnchor="middle" dominantBaseline="middle" fontFamily="var(--font-mono)" fontSize="16" fontWeight="700" fill="var(--color-ink)">{onboardingStep}<tspan fontSize="10" fill="rgba(28,35,41,0.4)">/6</tspan></text>
-                    </svg>
-                    <div className="flex-1">
-                      <p className="text-[11px] font-bold tracking-[0.2em] text-copper">ONBOARDING · 初始见面</p>
-                      <h2 className="mt-1 font-display text-[26px] leading-tight text-ink">第一次见面，问你六个问题。</h2>
-                      <p className="mt-1 text-[13px] text-ink/60">都可以之后改，凭直觉先选，1 分钟填完。</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* B2. 6 步条件切换容器 */}
-              <div className="mt-8 animate-float-up" style={{animationDelay:"100ms"}}>
-                {onboardingStep === 1 && (
-                  <div className="rounded-[1.75rem] p-2 ring-1 ring-ink/5" style={{backgroundColor:"var(--color-mist)"}}>
-                    <div className="rounded-[calc(1.75rem-0.375rem)] bg-parchment px-7 py-7" style={{boxShadow:"inset 0 1px 1px rgba(255,255,255,0.9)"}}>
-                      <p className="text-[10px] font-bold tracking-[0.25em] text-copper">第一步 · 身份</p>
-                      <h3 className="mt-2 font-display text-2xl leading-tight text-ink">你是哪种备考状态？</h3>
-                      <div className="mt-7 flex flex-wrap gap-3">
-                        {[
-                          {k:"full", label:"全职备考", tag:"风险+时间充裕"},
-                          {k:"work", label:"在职备考", tag:"最常见 · 时间紧张", active:true},
-                          {k:"fresh", label:"应届生", tag:"时间灵活"},
-                          {k:"grad", label:"已毕业在职", tag:"二战/三战常客"},
-                        ].map((c)=>(
-                          <button key={c.k} className="group rounded-full px-5 py-2.5 text-[14px] font-bold transition-all duration-300"
-                                  style={{backgroundColor:c.active?"var(--color-copper)":"var(--color-mist)", color:c.active?"#FFFDF7":"var(--color-ink)", boxShadow:c.active?"var(--shadow-copper)":undefined, transitionTimingFunction:"var(--ease-glide)"}}>
-                            <span>{c.label}</span>
-                            {c.tag && <span className={`ml-2 text-[10px] font-semibold ${c.active?"text-parchment/80":"text-ink/45"}`}>· {c.tag}</span>}
-                          </button>
-                        ))}
-                      </div>
-                      <p className="mt-8 text-[12px] text-ink/50">选了不锁死，之后随时改。在职 = 默认每天可用时间 2h。</p>
-                    </div>
-                  </div>
-                )}
-
-                {onboardingStep === 2 && (
-                  <div className="rounded-[1.75rem] p-2 ring-1 ring-ink/5" style={{backgroundColor:"var(--color-mist)"}}>
-                    <div className="rounded-[calc(1.75rem-0.375rem)] bg-parchment px-7 py-7" style={{boxShadow:"inset 0 1px 1px rgba(255,255,255,0.9)"}}>
-                      <p className="text-[10px] font-bold tracking-[0.25em] text-copper">第二步 · 考试</p>
-                      <h3 className="mt-2 font-display text-2xl leading-tight text-ink">你要考的是什么？</h3>
-                      <div className="mt-7 grid grid-cols-1 gap-4 md:grid-cols-2">
-                        {["考试类型（如：2027国考）","考试日期（如：2027-11-30）"].map((ph, idx)=>(
-                          <div key={ph} className="relative">
-                            <div className="rounded-[1.25rem] p-1 ring-1 ring-ink/10" style={{backgroundColor:"var(--color-mist)"}}>
-                              <div className="rounded-[calc(1.25rem-0.375rem)] bg-parchment px-4 pt-[14px] pb-3">
-                                <label className="absolute left-6 top-2 text-[11px] font-bold text-copper pointer-events-none">{ph}</label>
-                                <input defaultValue={idx===0?"2027国考":idx===1?"2027-11-30":""} className="w-full bg-transparent pt-1 text-[15px] font-semibold text-ink outline-none"/>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      <button className="mt-5 inline-flex rounded-full px-4 py-2 text-[12px] font-semibold text-copper ring-1 ring-copper/25 transition hover:bg-copper/5" style={{transitionTimingFunction:"var(--ease-glide)"}}>
-                        ⚡ 帮我自动填：国考 2027-11-30（最多人选）
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {onboardingStep === 3 && (
-                  <div className="rounded-[1.75rem] p-2 ring-1 ring-ink/5" style={{backgroundColor:"var(--color-mist)"}}>
-                    <div className="rounded-[calc(1.75rem-0.375rem)] bg-parchment px-7 py-7" style={{boxShadow:"inset 0 1px 1px rgba(255,255,255,0.9)"}}>
-                      <p className="text-[10px] font-bold tracking-[0.25em] text-copper">第三步 · 基础</p>
-                      <h3 className="mt-2 font-display text-2xl leading-tight text-ink">基础怎么样？</h3>
-                      <div className="mt-7 grid grid-cols-2 gap-4">
-                        {[
-                          {k:"zero", label:"零基础", desc:"还没开始看书"},
-                          {k:"some", label:"有基础", desc:"看过书/刷过部分题", active:true},
-                          {k:"war", label:"二战 / 三战", desc:"有实战经验"},
-                          {k:"idk", label:"说不清", desc:"你判断下？"},
-                        ].map((c)=>(
-                          <div key={c.k} className="relative rounded-[1.25rem] p-1 ring-1 transition-all duration-300"
-                               style={{backgroundColor:"var(--color-mist)", border:c.active?"2px solid var(--color-copper)":undefined, transitionTimingFunction:"var(--ease-glide)"}}>
-                            <div className="rounded-[calc(1.25rem-0.375rem)] bg-parchment px-5 py-5" style={{boxShadow:"inset 0 1px 1px rgba(255,255,255,0.9)"}}>
-                              {c.active && (
-                                <span className="absolute right-3 top-3 grid size-6 place-items-center rounded-full text-parchment" style={{backgroundColor:"var(--color-copper)"}}>
-                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                                </span>
-                              )}
-                              <p className="font-heading text-[16px] font-bold text-ink">{c.label}</p>
-                              <p className="mt-1 text-[12px] text-ink/55">{c.desc}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {onboardingStep === 4 && (
-                  <div className="rounded-[1.75rem] p-2 ring-1 ring-ink/5" style={{backgroundColor:"var(--color-mist)"}}>
-                    <div className="rounded-[calc(1.75rem-0.375rem)] bg-parchment px-7 py-7" style={{boxShadow:"inset 0 1px 1px rgba(255,255,255,0.9)"}}>
-                      <p className="text-[10px] font-bold tracking-[0.25em] text-copper">第四步 · 时间</p>
-                      <h3 className="mt-2 font-display text-2xl leading-tight text-ink">每天能投入多少？</h3>
-                      <p className="mt-1 text-[13px] text-ink/60">诚实填，排计划时我会按这个节奏来，绝不强行塞内容。</p>
-                      <div className="mt-7 grid grid-cols-1 gap-4 md:grid-cols-3">
-                        {[["工作日每天几小时？","2 小时"],["周末每天几小时？","4 小时"],["偏好学习时段？","19:30 左右"]].map(([ph, def])=>(
-                          <div key={ph} className="relative">
-                            <div className="rounded-[1.25rem] p-1 ring-1 ring-ink/10" style={{backgroundColor:"var(--color-mist)"}}>
-                              <div className="rounded-[calc(1.25rem-0.375rem)] bg-parchment px-4 pt-[14px] pb-3">
-                                <label className="absolute left-6 top-2 text-[11px] font-bold text-copper pointer-events-none">{ph}</label>
-                                <input defaultValue={def} className="w-full bg-transparent pt-1 text-[15px] font-semibold text-ink outline-none"/>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {onboardingStep === 5 && (
-                  <div className="rounded-[1.75rem] p-2 ring-1 ring-ink/5" style={{backgroundColor:"var(--color-mist)"}}>
-                    <div className="rounded-[calc(1.75rem-0.375rem)] bg-parchment px-7 py-7" style={{boxShadow:"inset 0 1px 1px rgba(255,255,255,0.9)"}}>
-                      <p className="text-[10px] font-bold tracking-[0.25em] text-copper">第五步 · 资料</p>
-                      <h3 className="mt-2 font-display text-2xl leading-tight text-ink">手头有备考资料吗？</h3>
-                      <div className="mt-7 grid grid-cols-1 gap-4 md:grid-cols-2">
-                        <div className="rounded-[1.25rem] p-1 ring-2 transition-all duration-300" style={{borderColor:"var(--color-copper)", transitionTimingFunction:"var(--ease-glide)"}}>
-                          <div className="rounded-[calc(1.25rem-0.375rem)] px-5 py-6" style={{backgroundColor:"var(--color-wheat)"}}>
-                            <p className="font-heading text-[18px] font-bold text-ink">有，我带了讲义和真题</p>
-                            <p className="mt-1 text-[12px] text-ink/65">上传后我自动拆科目/章节/知识点，按你的资料排计划。</p>
-                            <button className="mt-5 inline-flex rounded-full px-4 py-2 text-[12px] font-bold text-parchment" style={{backgroundColor:"var(--color-copper)"}}>
-                              📎 切到「资料」页上传
-                            </button>
-                          </div>
-                        </div>
-                        <div className="rounded-[1.25rem] p-1 ring-1 ring-ink/10 transition-all duration-300" style={{transitionTimingFunction:"var(--ease-glide)"}}>
-                          <div className="rounded-[calc(1.25rem-0.375rem)] bg-parchment px-5 py-6" style={{boxShadow:"inset 0 1px 1px rgba(255,255,255,0.7)"}}>
-                            <p className="font-heading text-[18px] font-bold text-ink">暂时没有，先用考纲排</p>
-                            <p className="mt-1 text-[12px] text-ink/55">我按国考/考研通用考纲生成占位计划，资料到了再一键重排。</p>
-                            <p className="mt-5 text-[12px] font-semibold text-copper">✓ 演示：选这一步，直接生成计划。</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {onboardingStep === 6 && (
-                  <div className="rounded-[1.75rem] p-2 ring-1 ring-ink/5" style={{backgroundColor:"var(--color-mist)"}}>
-                    <div className="rounded-[calc(1.75rem-0.375rem)] bg-parchment px-7 py-7" style={{boxShadow:"inset 0 1px 1px rgba(255,255,255,0.9)"}}>
-                      <p className="text-[10px] font-bold tracking-[0.25em] text-copper">第六步 · 取舍</p>
-                      <h3 className="mt-2 font-display text-2xl leading-tight text-ink">模块优先级，点击切换档位</h3>
-                      <p className="mt-1 text-[13px] text-ink/60">高 = 优先给时间；中 = 正常排；低 = 时间不够先砍。</p>
-                      <div className="mt-7 space-y-3">
-                        {[
-                          {m:"行测 · 资料分析", lvl:"high"},
-                          {m:"行测 · 言语理解", lvl:"mid"},
-                          {m:"行测 · 判断推理", lvl:"high"},
-                          {m:"行测 · 数量关系", lvl:"low"},
-                          {m:"行测 · 常识判断", lvl:"low"},
-                          {m:"申论", lvl:"mid"},
-                        ].map((row)=>(
-                          <div key={row.m} className="grid grid-cols-[1fr_auto] items-center gap-4 rounded-[1rem] px-4 py-3" style={{backgroundColor:"var(--color-mist)"}}>
-                            <span className="font-heading text-[14px] font-semibold text-ink">{row.m}</span>
-                            <div className="inline-flex gap-1 rounded-full p-1" style={{backgroundColor:"var(--color-parchment)"}}>
-                              {[["低","low","rgba(168,84,62,0.85)"],["中","mid","rgba(28,35,41,0.78)"],["高","high","var(--color-copper)"]].map(([label,key,bg])=>(
-                                <span key={key} className="rounded-full px-3.5 py-1.5 text-[12px] font-bold text-parchment"
-                                      style={{backgroundColor: row.lvl===key ? bg : "transparent", color: row.lvl===key ? "#FFFDF7" : "var(--color-ink-soft)"}}>
-                                  {label}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* B3. 底部操作栏：上一步 / 下一步 Nested CTA */}
-              <div className="mt-10 flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={()=>setOnboardingStep((s)=>Math.max(1, s-1) as 1|2|3|4|5|6)}
-                  disabled={onboardingStep===1}
-                  className="inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-[13px] font-semibold text-ink/60 transition hover:text-ink disabled:cursor-not-allowed disabled:opacity-30"
-                  style={{transitionTimingFunction:"var(--ease-glide)"}}
-                >← 上一步</button>
-                <button
-                  type="button"
-                  className="group inline-flex items-center justify-between gap-2 rounded-full px-5 py-3 text-[14px] font-bold transition-all duration-400 active:scale-[0.98]"
-                  style={{
-                    backgroundColor: onboardingStep===6 ? "var(--color-ink)" : "var(--color-copper)",
-                    color: "#FFFDF7",
-                    transitionTimingFunction: "var(--ease-spring-in)",
-                    boxShadow: onboardingStep===6 ? "0 4px 14px rgba(28,35,41,0.28)" : "var(--shadow-copper)",
-                  }}
-                  onClick={()=>{
-                    if (onboardingStep < 6) setOnboardingStep((s)=>(s+1) as 1|2|3|4|5|6);
-                    else { showToast("Onboarding 完成！首份计划生成中（3 秒）…","ok"); setTimeout(()=>{setIsFirstSession(false);}, 1500); }
-                  }}
-                >
-                  <span className="ml-2 tracking-wide">{onboardingStep===6 ? "✨ 好，开始备考！" : "下一步"}</span>
-                  <span className="grid size-8 place-items-center rounded-full transition-transform duration-400 group-hover:translate-x-0.5 group-hover:scale-105" style={{backgroundColor:"rgba(255,253,247,0.13)"}}>
-                    {onboardingStep===6 ? (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFDF7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                    ) : (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFDF7" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
-                    )}
-                  </span>
-                </button>
-              </div>
-            </div>
-          ) : (
             <>
               {/* 六刀懒加载状态行（顶部）：拉页显「加载更早…」；到头钉「没有更早消息」 */}
               {loadingOlder && (
@@ -1016,7 +793,6 @@ export default function Chat(): ReactElement {
                 </div>
               )}
             </>
-          )}
           <div ref={endRef}/>
         </section>
 
