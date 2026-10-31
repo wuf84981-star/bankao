@@ -103,7 +103,7 @@ const GOLD_CHARS = [
 
 
 
-export default function Login({ onEnter }: { onEnter: () => void }): ReactElement {
+export default function Login({ onEnter, onBack }: { onEnter: () => void; onBack?: () => void }): ReactElement {
   const [mode, setMode] = useState<"login" | "register">("register");
   const [email, setEmail] = useState("");
   const [pwd, setPwd] = useState("");
@@ -442,6 +442,14 @@ export default function Login({ onEnter }: { onEnter: () => void }): ReactElemen
                 </div>
               ) : (
                 <>
+                  {/* 返回介绍页（用户拍板 C）：只有 App 壳递了回腿才挂，独立使用 Login 不受累 */}
+                  {onBack && (
+                    <button type="button" onClick={onBack}
+                            className="mb-5 inline-flex items-center gap-1.5 text-[13px] font-semibold text-ink/55 transition duration-300 hover:text-copper"
+                            style={{ transitionTimingFunction: "var(--ease-glide)" }}>
+                      ← 返回介绍页
+                    </button>
+                  )}
                   {/* 移动版品牌字 */}
                   <div className="mb-8 lg:hidden">
                     <div className="font-display text-4xl tracking-[0.25em] text-ink">伴考</div>

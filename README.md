@@ -76,7 +76,7 @@
 
 | 层 | 选型 |
 |---|---|
-| **前端** | React 19 · TypeScript · Vite · Tailwind CSS 4（7 个页面：Chat / Login / Materials / Plan / Memory / Settings / Admin） |
+| **前端** | React 19 · TypeScript · Vite · Tailwind CSS 4（8 个页面：Intro 介绍页（未登录落地）/ Chat / Login / Materials / Plan / Memory / Settings / Admin） |
 | **后端** | Python 3.12 · FastAPI · SQLAlchemy 2 · Alembic · APScheduler（uv 管依赖与锁） |
 | **AI 编排** | LangGraph（教学状态机）· 自研 29 工具 function-call 循环 · MCP · 多模型（DeepSeek / 通义千问 / 智谱 GLM，7 型号热切换）· BYOK 用户自带钥匙免积分 |
 | **数据** | PostgreSQL 16 + pgvector（HNSW 向量索引）+ pg_trgm/tsvector · Redis 7 |
@@ -91,14 +91,11 @@
 
 <a id="效果图"></a>
 
-> 截图位待补：本地跑起来后截下面四张放进 `docs/images/` 目录即可让本节点亮（命名保持一致）。
+**对话页** —— 流式打字机 + 每日提醒 + 积分卡 + 模型/地球开关：
 
-| 建议截图 | 文件名 | 展示什么 |
-|---|---|---|
-| 聊天页 | `docs/images/chat.png` | 流式打字机 + 引用出处 + 积分卡 + 模型/地球开关 |
-| 计划页 | `docs/images/plan.png` | 考试日倒排日历 + 打卡状态 |
-| 资料仓 | `docs/images/materials.png` | PDF/Word 入库与切块状态 |
-| 记忆页 | `docs/images/memory.png` | 考试档案 / 掌握度 / 错误模式账 |
+<img src="docs/images/chat.png" alt="对话页" width="920"/>
+
+> 其余三张待补，放进展同名下划线即可：计划页 `plan.png`（考试日倒排日历 + 打卡状态）、资料仓 `materials.png`（PDF/Word 入库与切块状态）、记忆页 `memory.png`（考试档案 / 掌握度 / 错误模式账）。
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -188,7 +185,7 @@ bankao/
 │   ├── jobs.py            #   APScheduler 三张日程：03:00 清事件/每 5 分钟提醒/04:00 备份
 │   ├── points.py / short_memory.py / gaps.py / analytics.py …  # 积分流水/会话摘要/缺口账/埋点
 │   └── evals/             #   检索评测架（goldset + 召回指标，可重跑）
-├── frontend/              # React 19 + TS + Tailwind 4；src/pages 七页；dist 出货品
+├── frontend/              # React 19 + TS + Tailwind 4；src/pages 八页；dist 出货品
 ├── migrations/            # Alembic 迁移（23 张表的户口登记簿）
 ├── tests/                 # 360 离线单测（假件注入外部服务，数据库走真箱）
 ├── infra/nginx.conf       # 大门值班手册（静态递送 + /api 反代 + SSE 放行）

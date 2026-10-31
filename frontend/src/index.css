@@ -169,6 +169,21 @@ body::before {
 .animate-fly-right  { animation: fly-out-right 0.5s var(--ease-spring-out) both forwards; }
 .animate-fly-down   { animation: fly-out-down 0.5s var(--ease-spring-out) both forwards; }
 
+/* 滚动渐入（介绍页 Reveal 组件挂 .reveal，进过一次加 .in 定型再断开观察）
+   只动 opacity + transform，不触发重排；reduced-motion 兜底见下方降级块 */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 0.7s var(--ease-spring-out),
+    transform 0.7s var(--ease-spring-out);
+  will-change: opacity, transform;
+}
+.reveal.in {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 /* ============================================================
  * 鎏金冲屏文字 - Login 品牌墙（伴考）
  * 文字从屏幕中心向四周飞出 → 停留 → 淡出，循环不断
@@ -223,6 +238,8 @@ body::before {
   .animate-fly-down {
     animation: none !important;
   }
+  /* .reveal 必须强制可见：不兜底则开了减少动态的用户永远卡在透明态（介绍页内容隐身） */
+  .reveal { opacity: 1; transform: none; }
 }
 
 /* ============================================================

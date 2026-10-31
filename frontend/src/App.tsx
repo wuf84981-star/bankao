@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { api, clearAuth, getToken, getUsername } from "./auth";
 import Admin from "./pages/Admin";
 import Chat from "./pages/Chat";
+import Intro from "./pages/Intro";
 import Login from "./pages/Login";
 import Materials from "./pages/Materials";
 import Memory from "./pages/Memory";
@@ -118,6 +119,9 @@ function NavIcon({ name }: { name: PageKey }) {
 export default function App() {
   /* 登录态由口袋里的票决定：有票即进门（刷新不丢）——惰性初始化只读一次 */
   const [authed, setAuthed] = useState(() => !!getToken());
+  /* 介绍页落地闸（2026-10-31 接入刀 · 用户拍板 B）：没票的新面孔先见介绍页读懂再进门，
+     持票老客直进主界面不挡广告；退出登录属"还要再进"落登录页，不重放介绍页 */
+  const [landing, setLanding] = useState<"intro" | "login">("intro");
   const [page, setPage] = useState<PageKey>("chat");
   const [isAdmin, setIsAdmin] = useState(false);   // 户主旗号位（D49 甲），驱动侧栏「管理」显隐
   useEffect(() => {
@@ -139,7 +143,13 @@ export default function App() {
   }, [authed]);
   const left = exam ? daysLeft(exam.date) : 0;
 
-  if (!authed) return <Login onEnter={() => setAuthed(true)} />;
+  if (!authed) {
+    return landing === "intro" ? (
+      <Intro onEnter={() => setLanding("login")} onLogin={() => setLanding("login")} />
+    ) : (
+      <Login onEnter={() => setAuthed(true)} onBack={() => setLanding("intro")} />
+    );
+  }
 
   return (
     /* h-[100dvh] 钳死视口高（min-h 会被长内容撑破、滚动泄漏到整页——
@@ -251,7 +261,7 @@ export default function App() {
                   已登录 · {getUsername()}
                 </p>
                 <button type="button"
-                        onClick={() => { clearAuth(); setAuthed(false); }}
+                        onClick={() => { clearAuth(); setLanding("login"); setAuthed(false); }}
                         className="mt-1 text-[11px] font-semibold underline-offset-2 transition-opacity duration-300 hover:underline"
                         style={{ color: "rgba(255,253,247,0.5)" }}>
                   退出登录
