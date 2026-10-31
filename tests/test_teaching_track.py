@@ -206,9 +206,10 @@ def test_frames_shape_and_settlement(cleanup, monkeypatch):
     assert all(set(d) == {"delta"} for d in deltas)  # delta 帧键唯一，一帧不发明
     assert "".join(d["delta"] for d in deltas) == "我们一步步来[ref 1]"
     done = _payload(frames[-1])["done"]
-    # done 键集与事务轨逐项同构——前端 fly 只认这套契约：
-    assert set(done) == {"remaining", "notice", "balance", "points_spent",
+    # done 键集与事务轨逐项同构——前端 fly 只认这套契约（BYOK 两轨同带 byo 旗）
+    assert set(done) == {"remaining", "notice", "balance", "points_spent", "byo",
                          "used_tools", "username", "conv_id", "citations"}
+    assert done["byo"] is False                       # 无自带钥匙=平台油照扣
     assert done["used_tools"] == []                  # 教学轨不调工具：恒空是立场
     assert done["citations"] == cite and done["conv_id"] == cid
     assert done["points_spent"] == 2                 # 173 tokens ×1 倍率 ceil → 2 分

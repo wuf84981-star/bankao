@@ -189,7 +189,7 @@ export default function Chat(): ReactElement {
   /* 模型切换（S8 · D60 甲）：花名册和可用性都听后端 GET /api/settings/model——
      前端不抄第二份名单（真源在 llm.py 一处）。没钥匙的平台灰显，配好 key 重建容器自动点亮。
      OCR/向量点火等专用腿不随此切换，换的只是"跟你对话的脑子"。 */
-  type ModelRow = { id: string; platform: string; available: boolean; multiplier?: number };
+  type ModelRow = { id: string; platform: string; available: boolean; multiplier?: number; byo?: boolean };
   const [modelRows, setModelRows] = useState<ModelRow[]>([]);
   const [curModel, setCurModel] = useState("");
   const [modelMenu, setModelMenu] = useState(false);
@@ -1082,11 +1082,15 @@ export default function Chat(): ReactElement {
                   灰项=平台没钥匙（available=false），照列不藏——配好 .env 重建容器即点亮。 */}
               <div className="relative shrink-0">
                 <button type="button" onClick={() => setModelMenu((v) => !v)} aria-expanded={modelMenu}
-                        title={`当前对话模型：${curModel || "…"}（点击换）`}
+                        title={`当前对话模型：${curModel || "…"}（点击换）${modelRows.find((m) => m.id === curModel)?.byo ? " · 自带钥匙，对话免扣积分" : ""}`}
                         className="flex h-10 shrink-0 items-center gap-1 rounded-full px-2.5 text-ink/65 transition-all duration-300 hover:text-copper"
                         style={{backgroundColor:"var(--color-mist)", transitionTimingFunction:"var(--ease-glide)"}}>
                   <Icon n="chip" size={16}/>
                   <span className="max-w-[7.5rem] truncate text-[11px] font-semibold">{curModel || "…"}</span>
+                  {modelRows.find((m) => m.id === curModel)?.byo && (
+                    <span className="shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold text-copper"
+                          style={{backgroundColor:"var(--color-mist)"}}>自钥</span>
+                  )}
                   <Icon n="chevron" size={12}/>
                 </button>
                 {modelMenu && (<>
@@ -1097,12 +1101,12 @@ export default function Chat(): ReactElement {
                       <li key={m.id}>
                         <button type="button" onClick={() => pickModel(m)}
                                 disabled={!m.available}
-                                title={m.available ? `换到 ${m.id}（${m.platform} · 积分按 ×${m.multiplier ?? 1} 扣）` : `${m.platform} 平台还没配钥匙：.env 补对应 KEY 并重建容器后可选`}
+                                title={m.available ? (m.byo ? `换到 ${m.id}（${m.platform} · 自带钥匙烧自己的油，不扣积分）` : `换到 ${m.id}（${m.platform} · 积分按 ×${m.multiplier ?? 1} 扣）`) : `${m.platform} 平台还没配钥匙：.env 补对应 KEY 并重建容器后可选，DeepSeek 系也可在设置页自带钥匙`}
                                 className={`flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-[12px] transition-colors ${
                                   m.id === curModel ? "bg-copper/10 text-copper font-semibold"
                                   : m.available ? "text-ink hover:bg-ink/5" : "text-ink/30 cursor-not-allowed"}`}>
-                          <span className="truncate">{m.id}</span>
-                          <span className="shrink-0 text-[10px] text-ink/40">{m.id === curModel ? "使用中" : m.available ? `${m.platform} · ×${m.multiplier ?? 1}` : "未配钥匙"}</span>
+                          <span className="truncate">{m.id}{m.byo ? " ·自带钥" : ""}</span>
+                          <span className="shrink-0 text-[10px] text-ink/40">{m.id === curModel ? "使用中" : m.byo ? "自带钥匙 · 免积分" : m.available ? `${m.platform} · ×${m.multiplier ?? 1}` : "未配钥匙"}</span>
                         </button>
                       </li>
                     ))}

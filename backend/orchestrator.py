@@ -14,7 +14,8 @@ from backend.llm import chat_once
 from backend.models import Conversation, Message, UsageLog
 from backend.points import (LOW_BALANCE_WARN, POINTS_EMPTY_MSG, balance_of, spend)
 from backend.short_memory import note_message, window_get, with_summary
-from backend.tools import cited_by_reply, model_for, run_tool, tools_for, web_allowed
+from backend.tools import (cited_by_reply, model_for, own_key_for, run_tool,
+                           tools_for, web_allowed)
 
 DAILY_QUOTA = 2_000_000  # BR-12：每用户每日 token 预算（服务器本地日为账期；
                         # D66 甲 2026-09-12：20 万→200 万——保险丝不撤只加粗，
@@ -307,9 +308,16 @@ def answer_turn(session, user_id: int, user_text: str, *,
     """一轮对话的心脏（从 /api/chat 路由整段搬来，语义不变）：
     钱包护栏→组上下文→举手循环→两句+流水同 commit 落库。
     chat_fn 可注入假电厂——真 key 缺席的纸面世界，循环形状照样全链验收。
-    D60：真电厂路线收本户 model_choice 选模；注入的假电厂不感知（旧签名照活）。"""
+    D60：真电厂路线收本户 model_choice 选模；注入的假电厂不感知（旧签名照活）。
+    BYOK（2026-10-31）：本户带自带钥匙且选的是 DeepSeek 系型号——换钥匙烧自家的油、
+    免扣积分（花销不再走平台账），但 token 流水照记、日配额闸照守（防失控家规不变）。
+    注入的假电厂不参与 BYOK 判定（测试世界无钥匙概念，形状零变）。"""
     model = model_for(session, user_id)
-    fn = chat_fn or (lambda msgs, tools=None: chat_once(msgs, tools=tools, model=model))
+    own_key = own_key_for(session, user_id, model)
+    byo = bool(own_key) and chat_fn is None   # 假电厂=纸面世界，免扣逻辑别串进来
+    kw = {"api_key": own_key} if own_key else {}   # 无钥匙=旧调用形状（假件家法）
+    fn = chat_fn or (lambda msgs, tools=None: chat_once(msgs, tools=tools,
+                                                        model=model, **kw))
     today = date.today()
     spent = session.scalar(
         select(func.sum(UsageLog.tokens))
@@ -317,8 +325,9 @@ def answer_turn(session, user_id: int, user_text: str, *,
     ) or 0
     if spent >= DAILY_QUOTA:   # F-35/BR-12 钱包护栏（QQ 腿同闸：多端共一份配额）
         return {"err": "quota", "msg": "今日 200 万 token 预算用完啦，明天零点自动回血～"}
-    if balance_of(session, user_id) <= 0:   # D64 积分闸：资产见底不开口——零成本人话，
+    if not byo and balance_of(session, user_id) <= 0:   # D64 积分闸：资产见底不开口——零成本人话，
         return {"err": "points", "msg": POINTS_EMPTY_MSG}   # 电厂一毛不烧（QQ 腿 msg 透传同形）
+        # BYOK 闸旁路（2026-10-31）：自带钥匙烧的是用户自己的平台账，平台积分不扣即无「见底不开口」之说
     conv = _get_or_create_conv(session, user_id, channel, conv_id=conv_id)
     if conv is None:   # F-08 定点票闸：编的 id/别人的/QQ 行的，一律拒（不烧电厂不落账）
         return {"err": "conv", "msg": "这个会话不存在或不是你的——刷新侧栏重新选一个？"}
@@ -331,7 +340,12 @@ def answer_turn(session, user_id: int, user_text: str, *,
     msgs.append({"role": "user", "content": user_text})
     # 工具执行上下文：后端注入的 user_id + 当前会话 + 引用记账本（模型碰不到）
     # channel 随行：S9·W3 缺口账按来源记账（web/qq），answer_turn 签名本就带着它
+    # BYOK：仅自带钥匙在场时递 inner_chat_fn——嵌套电厂（出题/判分点评/错因归类）换钥匙；
+    # 无钥匙=不注入，三处默认腿走老路逐字不变（外科手术最小扰动）
     ctx = {"user_id": user_id, "session": session, "citations": [], "channel": channel}
+    if byo:
+        ctx["inner_chat_fn"] = lambda msgs, tools=None: chat_once(
+            msgs, tools=tools, model=model, api_key=own_key)
     try:
         # ── function-call 循环：举手→执行工具→喂结果→再问，最多 6 轮 ──
         ptok = ctok = 0
@@ -369,19 +383,21 @@ def answer_turn(session, user_id: int, user_text: str, *,
                         content=reply, token_count=ctok,
                         citations=cited or None))   # 引用账随答案落库
     session.add(UsageLog(user_id=user_id, day=today, tokens=ptok + ctok))  # 流水+对话同 commit 同生共死
-    cost = spend(session, user_id, ptok + ctok, model, today)   # D64：积分扣分与 token 流水同笔事务签发
+    # D64：积分扣分与 token 流水同笔事务签发；BYOK：烧的是用户自家平台账，积分不扣（cost=0），
+    # 但 UsageLog 照记、日配额照算——流水是真花过的，账不能骗
+    cost = 0 if byo else spend(session, user_id, ptok + ctok, model, today)
     session.commit()
     # S9·W6：落库后把本句与教练句添进会话窗——写路只添不删，Redis 灭时 no-op
     note_message(conv.id, "user", user_text)
     note_message(conv.id, "assistant", reply)
     balance = balance_of(session, user_id)
     remaining = DAILY_QUOTA - spent - ptok - ctok
-    notice = (f"积分余额只剩 {balance}——记得签到续口粮，省着点用"   # 资产命门优先播报
-              if balance <= LOW_BALANCE_WARN
+    notice = (f"积分余额只剩 {balance}——记得签到续口粮，省着点用"   # 资产命门优先播报（BYOK 不扣分不播这条）
+              if not byo and balance <= LOW_BALANCE_WARN
               else (f"今日剩余配额约 {max(remaining, 0)} token（不足 10%）"
                     if remaining < DAILY_QUOTA * 0.1 else None))
     return {"reply": reply, "remaining": remaining, "notice": notice,
-            "points_spent": cost, "balance": balance,
+            "points_spent": cost, "balance": balance, "byo": byo,
             "used_tools": used_tools, "citations": cited,
             "conv_id": conv.id}
 

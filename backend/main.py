@@ -27,7 +27,8 @@ from backend.auth import create_token, get_current_user, hash_password, verify_p
 from backend.chunking import chunk_text
 from backend.db import SessionLocal
 from backend.jobs import scheduler, start_jobs
-from backend.llm import DEFAULT_MODEL, MODEL_PLATFORM, chat_stream, key_ok, multiplier_of
+from backend.llm import (DEFAULT_MODEL, MODEL_PLATFORM, chat_once, chat_stream,
+                         check_deepseek_key, key_ok, multiplier_of)
 from backend.mail import send_mail
 from backend.models import (AnalyticsEvent, Chunk, Conversation, EmailCode,
                             Material, Message, PointsLedger, QQBinding, UsageLog, User)
@@ -42,8 +43,8 @@ from backend.qq import binding_for_user, gen_bind_code
 from backend.search import search
 from backend.short_memory import note_message, window_get, with_summary
 from backend.teaching_track import teaching_eligible, teaching_events
-from backend.tools import (MASTERY_LEVELS, cited_by_reply, model_for, run_tool,
-                           tools_for)
+from backend.tools import (MASTERY_LEVELS, cited_by_reply, model_for, own_key_for,
+                           run_tool, tools_for)
 from backend.zh_tokenizer import ts_input
 
 @asynccontextmanager
@@ -582,11 +583,18 @@ class ModelIn(BaseModel):
 @app.get("/api/settings/model")
 def get_model(user: User = Depends(get_current_user)):
     """D60 花名册+可用性+当前选模：没钥匙的平台照列（available=false，前端灰显），
-    用户配齐 .env 重建容器后自动点亮——清单是真源，不是藏掖。"""
+    用户配齐 .env 重建容器后自动点亮——清单是真源，不是藏掖。
+    BYOK（2026-10-31）：自带钥匙在场时 DeepSeek 系三路 byo=true 且 available 点亮——
+    平台没配 DEEPSEEK_API_KEY 也能靠自己的钥匙选它；非 DeepSeek 平台不吃自带钥匙。"""
     with SessionLocal() as session:
         cur = model_for(session, user.id)
+        own = session.scalar(text(
+            "SELECT own_deepseek_key FROM agent_settings WHERE user_id = :u"),
+            {"u": user.id})
     return {"current": cur, "default": DEFAULT_MODEL,
-            "models": [{"id": m, "platform": MODEL_PLATFORM[m], "available": key_ok(m),
+            "models": [{"id": m, "platform": MODEL_PLATFORM[m],
+                        "available": key_ok(m) or (bool(own) and MODEL_PLATFORM[m] == "deepseek"),
+                        "byo": bool(own) and MODEL_PLATFORM[m] == "deepseek",
                         "multiplier": multiplier_of(m)}   # D64：换脑子时看见的就是费率
                        for m in MODEL_PLATFORM]}
 
@@ -594,14 +602,15 @@ def get_model(user: User = Depends(get_current_user)):
 @app.post("/api/settings/model")
 def set_model(body: ModelIn, user: User = Depends(get_current_user)):
     """D60 选模落账：认花名册+平台有钥匙才收（拒脏账在后端，菜单灰显只是体贴）。
+    BYOK：DeepSeek 系型号自带钥匙在场也算「有钥匙」，不再强求 .env 平台键。
     下次开口即换新脑子——网页/QQ/流式/出题判分全线同源（都查这一本账）。"""
     m = body.model.strip()
     if m not in MODEL_PLATFORM:
         raise HTTPException(422, "这个型号不在花名册里——下拉菜单里挑一个")
-    if not key_ok(m):
-        raise HTTPException(422, "该平台还没配钥匙（.env 补对应 KEY 并重建容器后才能选它，"
-                                 "或先换回已点亮的型号）")
     with SessionLocal() as session:
+        if not key_ok(m) and not own_key_for(session, user.id, m):
+            raise HTTPException(422, "该平台还没配钥匙（.env 补对应 KEY 并重建容器后才能选它，"
+                                     "DeepSeek 系也可在下方自带钥匙，或先换回已点亮的型号）")
         updated = session.execute(text(
             "UPDATE agent_settings SET model_choice = :v WHERE user_id = :u"),
             {"v": m, "u": user.id}).rowcount
@@ -611,6 +620,70 @@ def set_model(body: ModelIn, user: User = Depends(get_current_user)):
                 {"u": user.id, "v": m})
         session.commit()
     return {"model": m}
+
+
+# ── BYOK 自带钥匙（2026-10-31 用户拍板：积分消耗太快，用户可接自己的 DeepSeek）──
+# 语义钉死：钥匙明文存本户 agent_settings 行（熟人期决定，上公网前改加密——已在欠账清单）；
+# 回显只给掩码，钥匙本体永不进日志、永不进回执；带钥期间 DeepSeek 系对话免扣积分（烧自家油），
+# 日 token 配额与 UsageLog 流水照守（防失控）。非 DeepSeek 平台不吃这把钥匙。
+
+def _mask_key(k: str) -> str:
+    """掩码回显：留头 3 尾 4 帮用户认出是哪把，中间一律打星。"""
+    if len(k) <= 8:
+        return "****"
+    return f"{k[:3]}{'*' * (len(k) - 7)}{k[-4:]}"
+
+
+class OwnKeyIn(BaseModel):
+    key: str = ""   # 空串=清除
+
+
+@app.get("/api/settings/ownkey")
+def get_ownkey(user: User = Depends(get_current_user)):
+    """只回掩码，永不回全文（回执进浏览器历史/日志，钥匙进不得）。"""
+    with SessionLocal() as session:
+        k = session.scalar(text(
+            "SELECT own_deepseek_key FROM agent_settings WHERE user_id = :u"),
+            {"u": user.id})
+    return {"configured": bool(k), "masked": _mask_key(k) if k else None}
+
+
+@app.post("/api/settings/ownkey")
+def set_ownkey(body: OwnKeyIn, user: User = Depends(get_current_user)):
+    """保存/清除自带钥匙。形状闸：空=清除；非空限可打印 ASCII（防控制字符进请求头）。
+    存前不验真——验真是「测试连通」腿的事，断网卡不让用户先存下钥匙。"""
+    k = body.key.strip()
+    if k and (len(k) > 300 or not re.fullmatch(r"[A-Za-z0-9_.\-]+", k)):
+        raise HTTPException(422, "钥匙形状不对：只含字母数字和 - _ .，最长 300 字符")
+    with SessionLocal() as session:
+        updated = session.execute(text(
+            "UPDATE agent_settings SET own_deepseek_key = :v WHERE user_id = :u"),
+            {"v": k or None, "u": user.id}).rowcount
+        if not updated and k:
+            session.execute(text(
+                "INSERT INTO agent_settings (user_id, own_deepseek_key) VALUES (:u, :v)"),
+                {"u": user.id, "v": k})
+        session.commit()
+    return {"configured": bool(k), "masked": _mask_key(k) if k else None}
+
+
+class OwnKeyTestIn(BaseModel):
+    key: str | None = None   # 带=测草稿钥匙（存前先看真假）；不带=测账上已存的
+
+
+@app.post("/api/settings/ownkey/test")
+def test_ownkey(body: OwnKeyTestIn, user: User = Depends(get_current_user)):
+    """拿这把钥匙真问一次 DeepSeek 余额接口验真。话术永不带钥匙本体。"""
+    k = (body.key or "").strip()
+    if not k:
+        with SessionLocal() as session:
+            k = session.scalar(text(
+                "SELECT own_deepseek_key FROM agent_settings WHERE user_id = :u"),
+                {"u": user.id}) or ""
+    if not k:
+        raise HTTPException(422, "还没有可测的钥匙——先填一把再点测试")
+    ok, msg = check_deepseek_key(k)
+    return {"ok": ok, "msg": msg}
 
 
 # D61 甲 2026-09-11（设置页人设接真腿）：命名/人设/自定义描述/提醒时点一页四账，
@@ -1112,6 +1185,7 @@ def chat(body: ChatIn, user: User = Depends(get_current_user)):
             "username": user.username, "remaining": out["remaining"],
             "notice": out["notice"],
             "balance": out["balance"],   # D64：开口后的钱包余额（前端积分卡就地刷新）
+            "byo": out.get("byo", False),   # BYOK：本句烧的是自带钥匙（自带钥匙腿免扣积分）
             "used_tools": out["used_tools"],   # 本句动用过哪几只手——空列表=纯嘴答
             "citations": out["citations"],   # 结构化出处：正文 [N] 只是标注，账在这
             "conv_id": out["conv_id"]}   # 五刀：消息实际落在哪条线——前端拿它回填 activeConv
@@ -1224,7 +1298,12 @@ def chat_stream_api(body: ChatIn, user: User = Depends(get_current_user)):
         if spent >= DAILY_QUOTA:
             raise HTTPException(status_code=429,
                                 detail="今日 200 万 token 预算用完啦，明天零点自动回血～")
-        if balance_of(session, user.id) <= 0:   # D64 积分闸：流式腿与 answer_turn 同闸同话术
+        # BYOK（2026-10-31）：进门先查自带钥匙——带钥烧自家油，积分闸旁路（与 answer_turn 同语义）；
+        # 日配额闸不认钥匙（防失控家规）。model/own_key 进门定妥，events() 闭包直用
+        model = model_for(session, user.id)
+        own_key = own_key_for(session, user.id, model)
+        byo = bool(own_key)
+        if not byo and balance_of(session, user.id) <= 0:   # D64 积分闸：流式腿与 answer_turn 同闸同话术
             raise HTTPException(status_code=429, detail=POINTS_EMPTY_MSG)
         # 五刀（F-08）：conv_id 定点——编的/别人的/QQ 线一律 404，不开流不落账不烧电
         conv = _get_or_create_conv(session, user.id, conv_id=body.conv_id)
@@ -1248,6 +1327,11 @@ def chat_stream_api(body: ChatIn, user: User = Depends(get_current_user)):
         # search_materials 捞库得有活会话可用）；finally 保证弃疗也不漏账本把手
         tool_session = SessionLocal()
         ctx = {"user_id": user_id, "session": tool_session, "citations": []}
+        # BYOK：自带钥匙在场才递 inner_chat_fn——嵌套电厂（出题/判分点评/错因归类）换钥匙；
+        # 无钥匙=不注入，三处默认腿走老路逐字不变（与 orchestrator.answer_turn 同法）
+        if byo:
+            ctx["inner_chat_fn"] = lambda msgs, tools=None: chat_once(
+                msgs, tools=tools, model=model, api_key=own_key)
         try:
             # S9·W5 教学轨分叉（五关全 AND，任何失手一字不差回旧路；
             # 回滚旗 TEACHING_TRACK_ENABLED=0 → teaching_eligible 恒 False）
@@ -1266,8 +1350,9 @@ def chat_stream_api(body: ChatIn, user: User = Depends(get_current_user)):
             ptok = ctok = 0
             used_tools: list[str] = []
             tools = tools_for(tool_session, user_id)   # D58：与 answer_turn 同一家法——开关定工具在场性
-            model = model_for(tool_session, user_id)   # D60 选模；D64：扣分倍率按它折
+            # D60 选模 + BYOK 钥匙在进门闸处已定妥（model/own_key 闭包直用，此处不再查账）
             reply = ""
+            kw = {"api_key": own_key} if own_key else {}   # 无钥匙=旧调用形状（假件家法）
             try:
                 for _ in range(MAX_TOOL_ROUNDS):
                     # 心跳帧（2026-09-12 断线案）：SSE 注释帧，前端解析只认 data: 行、
@@ -1275,7 +1360,7 @@ def chat_stream_api(body: ChatIn, user: User = Depends(get_current_user)):
                     # 「模型在想、工具在跑」的静默期不再被当成断线
                     yield ": ping\n\n"
                     call_msg: dict = {}
-                    for ev in chat_stream(msgs, tools=tools, model=model):   # D60：本户选模随行
+                    for ev in chat_stream(msgs, tools=tools, model=model, **kw):   # D60 选模；BYOK 带钥换油
                         kind = ev[0]
                         if kind == "delta":
                             yield _sse({"delta": ev[1]})   # 字直接往浏览器转
@@ -1311,18 +1396,19 @@ def chat_stream_api(body: ChatIn, user: User = Depends(get_current_user)):
                                     content=reply, token_count=ctok,
                                     citations=cited or None))   # 引用账落库
                 session.add(UsageLog(user_id=user_id, day=today, tokens=ptok + ctok))
-                cost = spend(session, user_id, ptok + ctok, model, today)   # D64：与 token 流水同笔事务
+                # D64 与 token 流水同笔事务；BYOK：烧自家平台账，积分不扣（cost=0），流水照记
+                cost = 0 if byo else spend(session, user_id, ptok + ctok, model, today)
                 session.commit()
                 note_message(conv.id, "assistant", reply)   # W6：教练句落库添窗（写路只添不删）
                 balance = balance_of(session, user_id)
             _track(user_id, "chat_message_sent", channel="web")   # D55 埋点：流式腿同账
             remaining = DAILY_QUOTA - spent - ptok - ctok
-            notice = (f"积分余额只剩 {balance}——记得签到续口粮，省着点用"   # D64 资产命门优先播报
-                      if balance <= LOW_BALANCE_WARN
+            notice = (f"积分余额只剩 {balance}——记得签到续口粮，省着点用"   # D64 资产命门优先播报（BYOK 不扣分不播这条）
+                      if not byo and balance <= LOW_BALANCE_WARN
                       else (f"今日剩余配额约 {max(remaining, 0)} token（不足 10%）"
                             if remaining < DAILY_QUOTA * 0.1 else None))
             yield _sse({"done": {"remaining": remaining, "notice": notice,
-                                 "balance": balance, "points_spent": cost,
+                                 "balance": balance, "points_spent": cost, "byo": byo,
                                  "used_tools": used_tools, "username": username,
                                  "conv_id": conv.id,   # 五刀：前端回填 activeConv
                                  "citations": cited}})

@@ -23,7 +23,7 @@ from backend.orchestrator import DAILY_QUOTA, SYSTEM_PROMPT, _system_for
 from backend.points import LOW_BALANCE_WARN, balance_of, spend
 from backend.short_memory import note_message, with_summary
 from backend.teaching_graph import build_graph, get_saver
-from backend.tools import cited_by_reply, model_for
+from backend.tools import cited_by_reply, model_for, own_key_for
 
 
 def _sse(obj: dict) -> str:
@@ -116,7 +116,13 @@ def teaching_events(*, user_id: int, username: str, user_msg: str, conv,
     教学轨不调工具（used_tools 恒空是立场不是遗漏：讲义问答不需要举手循环）。"""
     if model is None:
         model = model_for(tool_session, user_id)   # D60 选模同账；D64 倍率按它折
-    graph = build_graph(get_saver(), session=tool_session)
+    # BYOK（2026-10-31）：自带钥匙走 build_graph 闭包下传给 diagnose/generate 两腿——
+    # 不进图状态（检查点表会存全状态明文，钥匙不当副本）。
+    # 与事务轨同语义：烧自家平台账则积分不扣（cost=0），流水与日配额照记照守。
+    own_key = own_key_for(tool_session, user_id, model)
+    byo = bool(own_key)
+    kw = {"api_key": own_key} if own_key else {}   # 无钥匙=旧调用形状（假件家法）
+    graph = build_graph(get_saver(), session=tool_session, **kw)
     state_in = {
         "user_text": user_msg,
         "user_id": user_id,
@@ -162,17 +168,18 @@ def teaching_events(*, user_id: int, username: str, user_msg: str, conv,
                             content=reply, token_count=ctok,
                             citations=citations or None))
         session.add(UsageLog(user_id=user_id, day=today, tokens=ptok + ctok))
-        cost = spend(session, user_id, ptok + ctok, model, today)
+        # BYOK：烧的是用户自家平台账，积分不扣（与事务轨同法）；流水照记
+        cost = 0 if byo else spend(session, user_id, ptok + ctok, model, today)
         session.commit()
         note_message(conv.id, "assistant", reply)   # W6：教练句落库添窗（与事务轨同点同法）
         balance = balance_of(session, user_id)
     _track(user_id, "chat_message_sent", channel="web")   # D55 埋点：两轨同账
     remaining = DAILY_QUOTA - spent - ptok - ctok
-    notice = (f"积分余额只剩 {balance}——记得签到续口粮，省着点用"   # 资产命门优先播报
-              if balance <= LOW_BALANCE_WARN
+    notice = (f"积分余额只剩 {balance}——记得签到续口粮，省着点用"   # 资产命门优先播报（BYOK 不扣分不播这条）
+              if not byo and balance <= LOW_BALANCE_WARN
               else (f"今日剩余配额约 {max(remaining, 0)} token（不足 10%）"
                     if remaining < DAILY_QUOTA * 0.1 else None))
     yield _sse({"done": {"remaining": remaining, "notice": notice,
-                         "balance": balance, "points_spent": cost,
+                         "balance": balance, "points_spent": cost, "byo": byo,
                          "used_tools": [], "username": username,
                          "conv_id": conv.id, "citations": citations}})

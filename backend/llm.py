@@ -68,10 +68,15 @@ def resolve_model(model: str | None) -> str:
     return model if model in MODEL_PLATFORM else DEFAULT_MODEL
 
 
-def get_client(model: str = DEFAULT_MODEL) -> OpenAI:
-    """建（或复用）该型号平台的客户端：密钥只从环境变量来——永不明写进代码。
-    旧调用无参照走默认平台，形状兼容。"""
+def get_client(model: str = DEFAULT_MODEL, api_key: str | None = None) -> OpenAI:
+    """建（或复用）该型号平台的客户端：默认密钥只从环境变量来——永不明写进代码。
+    旧调用无参照走默认平台，形状兼容。
+    BYOK（2026-10-31）：api_key 给了就用用户自带的这把（现建临时客户端、不进
+    平台缓存——一把钥匙一份账，串池子等于串账）；没给=平台钥匙老路一字不变。"""
     plat = platform_of(model)
+    if api_key:
+        base, _ = _PLATFORMS[plat]
+        return OpenAI(api_key=api_key.strip(), base_url=base)
     if plat not in _clients:
         base, keyenv = _PLATFORMS[plat]
         key = os.environ.get(keyenv, "").strip()
@@ -81,15 +86,42 @@ def get_client(model: str = DEFAULT_MODEL) -> OpenAI:
     return _clients[plat]
 
 
+def check_deepseek_key(key: str, getter=None) -> tuple[bool, str]:
+    """验一把自带钥匙（设置页「测试连通」腿）：拿它问 DeepSeek 余额接口——
+    200=钥匙可用（顺带可报余额），401/402=钥匙无效或欠费，其余=网络/平台故障。
+    getter 注入假传输（websearch 家法）：单测绝不真触网。
+    ⚠️ 任何返回话术不得回显钥匙本体。"""
+    import httpx
+    key = key.strip()
+    if not key:
+        return False, "还没填钥匙"
+    url = "https://api.deepseek.com/user/balance"
+    headers = {"Authorization": f"Bearer {key}"}
+    try:
+        resp = (getter or httpx.get)(url, headers=headers, timeout=8)
+    except Exception:
+        return False, "网络故障，连不上 DeepSeek，稍后再试"
+    if resp.status_code == 200:
+        try:
+            bal = float(resp.json().get("balance_infos", [{}])[0].get("total_balance", ""))
+            return True, f"钥匙可用，平台余额约 {bal:g} 元"
+        except Exception:
+            return True, "钥匙可用"
+    if resp.status_code in (401, 402, 403):
+        return False, "钥匙被 DeepSeek 拒绝（无效、过期或欠费），核对后重填"
+    return False, f"DeepSeek 返回异常状态 {resp.status_code}，稍后重试或去平台核查"
+
+
 def chat_once(messages: list[dict], tools: list[dict] | None = None,
-              model: str | None = None) -> tuple[dict, int, int]:
+              model: str | None = None, api_key: str | None = None) -> tuple[dict, int, int]:
     """电厂跑一轮：把上下文喂进去，拿回 (助手消息 dict, prompt tokens, completion tokens)。
     助手这轮要么"开口"（content 有字）、要么"举手要工具"（tool_calls 非空）——
     要不要循环、跑几轮，是编排层（main.py chat）的事，本层只管一轮一结。
     usage 是模型账单的真实数字；举手那轮 content 常为空，属正常。
-    model=D60 选模（None/不认=DEFAULT_MODEL）；按平台路由，烧哪家记哪家账。"""
+    model=D60 选模（None/不认=DEFAULT_MODEL）；按平台路由，烧哪家记哪家账。
+    api_key=BYOK 自带钥匙（None=平台钥匙老路）。"""
     m = resolve_model(model)
-    resp = get_client(m).chat.completions.create(
+    resp = get_client(m, api_key=api_key).chat.completions.create(
         model=m,
         messages=messages,
         tools=tools,   # None=纯聊天；给了说明书，模型才可能举手
@@ -113,15 +145,15 @@ def chat_once(messages: list[dict], tools: list[dict] | None = None,
 
 
 def chat_stream(messages: list[dict], tools: list[dict] | None = None,
-                model: str | None = None):
+                model: str | None = None, api_key: str | None = None):
     """电厂流式跑一轮（四刀）：边想边吐，逐个产出事件——
       ("delta", 文字片段)                      → 可以直接往浏览器转发的字
       ("message", 助手整轮 dict, ptok, ctok)   → 本轮收尾：要么纯话，要么含 tool_calls
     举手的 arguments 在网络上是碎着来的，这里按 index 拼回完整函数呼叫；
     usage 默认不随流回，要用 stream_options 点名要（最后一块才带）。
-    model=D60 选模，规则同 chat_once。"""
+    model=D60 选模，规则同 chat_once；api_key=BYOK 自带钥匙（None=平台钥匙老路）。"""
     m = resolve_model(model)
-    stream = get_client(m).chat.completions.create(
+    stream = get_client(m, api_key=api_key).chat.completions.create(
         model=m,
         messages=messages,
         tools=tools,

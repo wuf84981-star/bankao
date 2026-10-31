@@ -109,9 +109,12 @@ _STRATEGY_HINT = {
 }
 
 
-def make_nodes(session=None) -> dict:
+def make_nodes(session=None, api_key=None) -> dict:
     """六节点闭包工厂：retrieve 节点要有活的 session 才能捞库，其余五步不直触 DB。
-    测试从这里拿单步节点逐个验；生产走 build_graph。"""
+    测试从这里拿单步节点逐个验；生产走 build_graph。
+    BYOK（2026-10-31）：api_key=自带钥匙走闭包下传，diagnose/generate 两腿换钥——
+    ⚠ 不进 TeachingState：检查点把全状态明文存 PG 四表，钥匙落 checkpoint 等于到处铺副本。
+    默认 None=电厂调用形状逐字不变（旧测试假件签名零影响）。"""
 
     def safety(state: TeachingState) -> dict:
         """第一步关闸：纯规则安全腿（零 token）。拦下则固定话术直接进 reply。
@@ -167,6 +170,7 @@ def make_nodes(session=None) -> dict:
         recent = "\n".join(f"{m.get('role')}: {str(m.get('content'))[:200]}"
                            for m in hist[-6:])
         prev_u = state.get("understood")
+        kw = {"api_key": api_key} if api_key else {}   # 无钥匙=旧调用形状（假件家法）
         call, p, c = chat_once([
             {"role": "system", "content": _DIAG_PROMPT},
             {"role": "user", "content":
@@ -174,7 +178,7 @@ def make_nodes(session=None) -> dict:
                 f"【上一轮验懂结论】"
                 f"{'未判定' if prev_u is None else ('已懂' if prev_u else '还没懂')}\n"
                 f"【本轮学生问】\n{state.get('user_text') or ''}\n"
-                "现在只输出 JSON。"}], tools=None, model=state.get("model"))
+                "现在只输出 JSON。"}], tools=None, model=state.get("model"), **kw)
         d = extract_json(call.get("content") or "")
         return {"diagnosis": d if isinstance(d, dict) else {}, "ptok": p, "ctok": c}
 
@@ -208,7 +212,8 @@ def make_nodes(session=None) -> dict:
                  for m in (state.get("history") or [])]
         msgs.append({"role": "user", "content": state.get("user_text") or ""})
         reply, p, c = "", 0, 0
-        for ev in chat_stream(msgs, tools=None, model=state.get("model")):
+        kw = {"api_key": api_key} if api_key else {}   # 无钥匙=旧调用形状（假件家法）
+        for ev in chat_stream(msgs, tools=None, model=state.get("model"), **kw):
             if ev[0] == "delta":
                 writer({"delta": ev[1]})
             else:
@@ -235,10 +240,11 @@ def make_nodes(session=None) -> dict:
             "diagnose": diagnose, "generate": generate, "verify": verify}
 
 
-def build_graph(checkpointer=None, *, session=None):
+def build_graph(checkpointer=None, *, session=None, api_key=None):
     """编译六节点线性图。checkpointer=None（降级态）：图照跑，只是回环
-    轮数每条消息都归零——教学照常，没有断点。"""
-    n = make_nodes(session)
+    轮数每条消息都归零——教学照常，没有断点。
+    api_key=BYOK 自带钥匙（透传进节点闭包，不进状态、不落检查点）。"""
+    n = make_nodes(session, api_key=api_key)
     g = StateGraph(TeachingState)
     for name, fn in n.items():
         g.add_node(name, fn)

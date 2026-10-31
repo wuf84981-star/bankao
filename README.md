@@ -1,17 +1,3 @@
-<!-- 结构基于 Best-README-Template（othneildrew）重构，2026-10-29 -->
-<a id="readme-top"></a>
-
-<!-- PROJECT SHIELDS -->
-[![MIT License][license-shield]][license-url]
-[![Python][python-shield]][python-url]
-[![React][react-shield]][react-url]
-[![FastAPI][fastapi-shield]][fastapi-url]
-[![PostgreSQL][pg-shield]][pg-url]
-[![Docker][docker-shield]][docker-url]
-[![pytest 351 passing][tests-shield]][tests-url]
-
-<!-- PROJECT LOGO -->
-<br />
 <div align="center">
   <a href="https://github.com/wind989/bankao">
     <img src="frontend/public/favicon.svg" alt="Logo" width="80" height="80">
@@ -24,14 +10,10 @@
     <br />
     <a href="#快速开始"><strong>本地跑起来 »</strong></a>
     <br />
-    <br />
-    <a href="https://github.com/wind989/bankao/issues/new?labels=bug">Report Bug</a>
-    &middot;
-    <a href="https://github.com/wind989/bankao/issues/new?labels=enhancement">Request Feature</a>
   </p>
-</div>
 
-<!-- TABLE OF CONTENTS -->
+
+
 <details>
   <summary>目录</summary>
   <ol>
@@ -49,7 +31,6 @@
 
 ---
 
-<!-- ABOUT THE PROJECT -->
 ## 项目简介
 
 <a id="项目简介"></a>
@@ -66,7 +47,7 @@
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-<!-- FEATURES -->
+
 ## ✨ 核心亮点
 
 <a id="核心亮点"></a>
@@ -82,11 +63,13 @@
 5. **学习闭环回流线**
    档案（`exam_profiles`）→ 倒排计划（读掌握度账倾斜弱项）→ 打卡（积压即提议整版重排）→ 判分（错题归 `error_patterns`，同错计数）→ 强化出题（额度=未结案错题数、已答自动排除）→ 掌握度回写 → 影响下一轮计划。环环有代码有测试。
 6. **工程质量**
-   **351 个离线单测**全绿：假件只注入外部服务（假电厂/假 OCR/假邮件腿/假联网传输），零真网络零真烧钱；每日 04:00 自动备份整库+资料仓滚动留 7 份；积分余额**从流水账导出**，无人能偷偷改数。
+   **360 个离线单测**全绿：假件只注入外部服务（假电厂/假 OCR/假邮件腿/假联网传输），零真网络零真烧钱；每日 04:00 自动备份整库+资料仓滚动留 7 份；积分余额**从流水账导出**，无人能偷偷改数。
+7. **BYOK 自带钥匙**（`/api/settings/ownkey`）
+   用户挂上自己的 DeepSeek API Key 后，DeepSeek 系对话烧**用户自己的平台余额、不扣本平台积分**（连积分见底的户也能开口）；钥匙只回掩码、存前可一键验真；非 DeepSeek 平台不吃这把钥匙，token 用量流水与每日配额照守防失控。
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-<!-- BUILT WITH -->
+
 ## 🛠️ 技术栈
 
 <a id="技术栈"></a>
@@ -95,7 +78,7 @@
 |---|---|
 | **前端** | React 19 · TypeScript · Vite · Tailwind CSS 4（7 个页面：Chat / Login / Materials / Plan / Memory / Settings / Admin） |
 | **后端** | Python 3.12 · FastAPI · SQLAlchemy 2 · Alembic · APScheduler（uv 管依赖与锁） |
-| **AI 编排** | LangGraph（教学状态机）· 自研 29 工具 function-call 循环 · MCP · 多模型（DeepSeek / 通义千问 / 智谱 GLM，7 型号热切换） |
+| **AI 编排** | LangGraph（教学状态机）· 自研 29 工具 function-call 循环 · MCP · 多模型（DeepSeek / 通义千问 / 智谱 GLM，7 型号热切换）· BYOK 用户自带钥匙免积分 |
 | **数据** | PostgreSQL 16 + pgvector（HNSW 向量索引）+ pg_trgm/tsvector · Redis 7 |
 | **消息通道** | NoneBot2 · NapCat（OneBot 11 HTTP）· 邮箱验证码 SMTP |
 | **认证与安全** | JWT + bcrypt + 验证码账 · 全链 user_id 票闸 · 密钥外置 `.env` |
@@ -103,7 +86,7 @@
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-<!-- SCREENSHOTS -->
+
 ## 📷 效果图
 
 <a id="效果图"></a>
@@ -119,7 +102,8 @@
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-<!-- GETTING STARTED -->
+
+
 ## 🚀 快速启动
 
 <a id="快速开始"></a>
@@ -180,7 +164,7 @@ uv run alembic upgrade head
 ```bash
 # 后端热重载：compose 已挂载 ./backend（--reload），改存盘即生效
 # 前端开发口：cd frontend && npm run dev（:5173，出货口仍是 :80）
-uv run --with pytest -q python -m pytest tests/   # 351 例离线单测，零真网络零真烧钱
+uv run --with pytest -q python -m pytest tests/   # 360 例离线单测，零真网络零真烧钱
 ```
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
@@ -193,7 +177,7 @@ uv run --with pytest -q python -m pytest tests/   # 351 例离线单测，零真
 ```
 bankao/
 ├── backend/               # FastAPI 后端（大脑所在）
-│   ├── main.py            #   51 个 REST/SSE 路由（网页腿）
+│   ├── main.py            #   54 个 REST/SSE 路由（网页腿）
 │   ├── qq.py              #   OneBot11 事件腿（QQ 消息进、主动推送出）
 │   ├── orchestrator.py    #   双通道汇合点：29 工具 function-call 循环
 │   ├── teaching_graph.py  #   LangGraph 六节点教学状态机
@@ -206,7 +190,7 @@ bankao/
 │   └── evals/             #   检索评测架（goldset + 召回指标，可重跑）
 ├── frontend/              # React 19 + TS + Tailwind 4；src/pages 七页；dist 出货品
 ├── migrations/            # Alembic 迁移（23 张表的户口登记簿）
-├── tests/                 # 351 离线单测（假件注入外部服务，数据库走真箱）
+├── tests/                 # 360 离线单测（假件注入外部服务，数据库走真箱）
 ├── infra/nginx.conf       # 大门值班手册（静态递送 + /api 反代 + SSE 放行）
 ├── docker-compose.yml     # 六箱配载图（本机与云服务器跑同一份）
 ├── .env.example           # 密钥模板（真 .env 永不进库）
@@ -238,7 +222,7 @@ bankao/
     对 2 错 1。错题已归账。下次排计划会把极限加权。
 ```
 
-### 接口说明（共 51 个，全部 JWT 鉴权 + user_id 票闸）
+### 接口说明（共 54 个，全部 JWT 鉴权 + user_id 票闸）
 
 启动后访问 **`http://localhost/docs`** 可看 FastAPI 自动生成的交互式文档（可直接试调用）。下表按模块分组：
 
@@ -249,7 +233,7 @@ bankao/
 | 计划（5） | `GET /api/plan/summary` · `/api/plan/calendar` · `/api/plan/day` · `POST /api/plan/item/{id}/check` · `POST /api/checkin` | 倒排结果、日历视图、单日清单、页门打卡 |
 | 资料/RAG（6） | `GET/DELETE /api/materials` · `POST /api/parse` · `/api/ingest` · `GET /api/search` · `GET /api/chunks/{id}` | 上传解析（PDF/Word/TXT/MD）→ 切块向量化 → 检索调试 |
 | 记忆（7） | `GET /api/memories` · `POST /api/memories/fact` · `/confirm` · `/forget` · `/mastery` · `POST/DELETE /api/memories/profile` | 档案/偏好/掌握度/错误模式的查、认、忘 |
-| 设置（10） | `GET/POST /api/settings/`（profile · model · teaching · websearch · feynman） | 人设/模型/教学开关/联网开关/费曼模式，页面与聊天同一本账 |
+| 设置（13） | `GET/POST /api/settings/`（profile · model · teaching · websearch · feynman · ownkey） · `POST /api/settings/ownkey/test` | 人设/模型/教学开关/联网开关/费曼模式/BYOK 自带钥匙（存·掩码回显·验真），页面与聊天同一本账 |
 | 积分（2） | `GET /api/points` · `POST /api/checkin` | 钱包与签到流水 |
 | QQ（2） | `GET /api/qq/binding` · `POST /api/qq/bind-code` | 绑定码签发；OneBot 事件腿在 bot 箱 :8080 |
 | 管理（4） | `GET /api/admin/users` · `/stats` · `/gaps` · `POST /api/admin/points/adjust` | 仅户主 |
@@ -272,52 +256,9 @@ bankao/
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-<!-- CONTRIBUTING -->
-## 参与贡献
 
-1. Fork 本仓库，建特性分支（`git checkout -b feature/AmazingFeature`）
-2. 家规三条：代码注释简体中文、变量名英文；**任何行为改动必须让 351 例 pytest 全绿**，新功能补离线测试；数据库变更必须走 `alembic revision --autogenerate` 且人工检查生成物（误拆别人家的表是历史上真踩过的坑）
-3. Push 分支并开 Pull Request
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-<!-- LICENSE -->
-## 许可证
 
-MIT License，见 [LICENSE](LICENSE)。
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-<!-- CONTACT -->
-## 联系
-
-项目问题请开 [GitHub Issues](https://github.com/wind989/bankao/issues)。
-
-Project Link: [https://github.com/wind989/bankao](https://github.com/wind989/bankao)
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-<!-- ACKNOWLEDGMENTS -->
-## 致谢
-
-* [pgvector](https://github.com/pgvector/pgvector) · [LangGraph](https://github.com/langchain-ai/langgraph) · [NoneBot2](https://github.com/nonebot/nonebot2) · [NapCat](https://github.com/NapNapCAT/napcat)
-* [uv](https://docs.astral.sh/uv/) · [FastAPI](https://fastapi.tiangolo.com) · [Vite](https://vite.dev) · [Tailwind CSS](https://tailwindcss.com)
-* README 骨架取自 [Best-README-Template](https://github.com/othneildrew/Best-README-Template)
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-<!-- MARKDOWN LINKS & IMAGES -->
-[license-shield]: https://img.shields.io/github/license/wind989/bankao?style=for-the-badge
-[license-url]: LICENSE
-[python-shield]: https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white
-[python-url]: https://www.python.org/
-[react-shield]: https://img.shields.io/badge/React_19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB
-[react-url]: https://reactjs.org/
-[fastapi-shield]: https://img.shields.io/badge/FastAPI-019442?style=for-the-badge&logo=fastapi&logoColor=white
-[fastapi-url]: https://fastapi.tiangolo.com
-[pg-shield]: https://img.shields.io/badge/PostgreSQL16%2Bpgvector-336791?style=for-the-badge&logo=postgresql&logoColor=white
-[pg-url]: https://www.postgresql.org/
-[docker-shield]: https://img.shields.io/badge/Docker_Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white
-[docker-url]: https://www.docker.com/
-[tests-shield]: https://img.shields.io/badge/pytest-351_passing-649ED2?style=for-the-badge&logo=pytest&logoColor=white
-[tests-url]: tests/

@@ -22,6 +22,9 @@
  * D89 费曼加招（2026-10-18 用户拍板）：同组第二闸「费曼式检验」——
  *   教学轨 15 招里「你讲我听」的意愿开关，/api/settings/feynman 独立账，
  *   同款三态（从没动过=开）；子闸从属大门：教学关了它无台可唱（文案标明）。
+ * BYOK（2026-10-31 用户拍板「积分消耗太快，让用户自己接 DeepSeek」）：
+ *   新增「模型钥匙 · 自带」组（OwnKeyPanel）——带钥期间 DeepSeek 系对话
+ *   免扣积分；钥匙只回掩码、永不回显全文。
  * ============================================================ */
 
 import { useEffect, useRef, useState } from "react";
@@ -560,6 +563,12 @@ export default function Settings() {
         </div>
 
         {/* =========================================================
+         *  组二·B：模型钥匙 · 自带（BYOK 2026-10-31 用户拍板：积分消耗太快，
+         *  接自己的 DeepSeek——带钥期间 DeepSeek 系对话免扣积分，烧自家油）
+         * ========================================================= */}
+        <OwnKeyPanel />
+
+        {/* =========================================================
          *  组三：QQ 绑定（D65 续刀：整件从侧栏搬来——侧栏窄塞不下好友码）
          * ========================================================= */}
         <QqBindPanel />
@@ -715,6 +724,138 @@ export default function Settings() {
         </div>
       )}
     </section>
+  );
+}
+
+/* ============================================================
+ * BYOK 自带钥匙功能组（2026-10-31 用户拍板：积分消耗太快，接自己的 DeepSeek）：
+ * 账走 /api/settings/ownkey 三端点——GET 只回掩码、POST 空串=清除、/test 真验钥。
+ * 语义说在人话里：带钥=DeepSeek 系对话烧自家油不扣积分；非 DeepSeek 平台不吃这把钥；
+ * 日 token 配额仍守（防失控）。钥匙永不回显全文：存后只剩掩码行，输入框 password 型、存完即清。
+ * ============================================================ */
+function OwnKeyPanel() {
+  const [configured, setConfigured] = useState(false);
+  const [masked, setMasked] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [msgOk, setMsgOk] = useState(false);
+
+  useEffect(() => {
+    api("/api/settings/ownkey")
+      .then((d) => {
+        const r = d as { configured: boolean; masked: string | null };
+        setConfigured(r.configured);
+        setMasked(r.masked);
+      })
+      .catch(() => {});   // 读失败只是状态行空着，不打扰页面其余账
+  }, []);
+
+  /** 本组回执走页内一行（与 QqBindPanel 同款不自重定向 Toast，报错就近看得见） */
+  function flash(ok: boolean, text: string): void { setMsgOk(ok); setMsg(text); }
+
+  async function save(): Promise<void> {
+    const k = draft.trim();
+    if (!k) { flash(false, "先把钥匙贴进来再存"); return; }
+    setBusy(true);
+    try {
+      const d = (await api("/api/settings/ownkey", { key: k })) as { configured: boolean; masked: string | null };
+      setConfigured(d.configured); setMasked(d.masked); setDraft("");
+      flash(true, "已落账：自带钥匙存好——DeepSeek 系对话从此不扣积分");
+    } catch (e) { flash(false, (e as Error).message); }
+    finally { setBusy(false); }
+  }
+
+  async function test(): Promise<void> {
+    setBusy(true);
+    try {
+      // 有草稿先验草稿（存前验真），没草稿验账上存的
+      const d = (await api("/api/settings/ownkey/test",
+                           { key: draft.trim() || null })) as { ok: boolean; msg: string };
+      flash(d.ok, d.msg);
+    } catch (e) { flash(false, (e as Error).message); }
+    finally { setBusy(false); }
+  }
+
+  async function clear(): Promise<void> {
+    setBusy(true);
+    try {
+      await api("/api/settings/ownkey", { key: "" });
+      setConfigured(false); setMasked(null); setDraft("");
+      flash(true, "自带钥匙已清除——回到积分计费");
+    } catch (e) { flash(false, (e as Error).message); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <div className="rounded-[1.75rem] p-2 ring-1 ring-ink/5" style={{ backgroundColor: "var(--color-mist)" }}>
+      <div className="rounded-[calc(1.75rem-0.5rem)] p-5"
+           style={{ backgroundColor: "var(--color-parchment)", boxShadow: "inset 0 1px 1px rgba(255,255,255,0.8)" }}>
+        <span className="mb-2 inline-block rounded-full px-3 py-1 text-[10px] font-bold tracking-[0.25em]"
+              style={{ backgroundColor: "rgba(28,35,41,0.10)", color: "rgba(28,35,41,0.70)" }}>
+          钥匙 · 自带
+        </span>
+        <h2 className="font-display text-2xl text-ink">接上你自己的 DeepSeek 钥匙</h2>
+        <p className="mt-1 text-[12px] font-semibold leading-relaxed text-ink/70">
+          去 platform.deepseek.com 注册并充值，建一把 API Key 贴进来。存好之后，
+          DeepSeek 系模型的对话烧的是你自己在 DeepSeek 的余额，<b className="text-copper">不再扣本平台积分</b>；
+          通义 / 智谱的型号不吃这把钥匙，照旧积分计费。每日 token 配额仍会守（防失控）。
+        </p>
+
+        {/* 状态行：存过=掩码 + 清除钮；没存=灰条说明（一眼分虚实，同本页家法） */}
+        <div className="mt-4 rounded-[1rem] p-1 ring-1 ring-ink/5"
+             style={{ backgroundColor: "rgba(243,240,234,0.70)" }}>
+          <div className="flex items-center gap-4 rounded-[calc(1rem-0.25rem)] px-4 py-3"
+               style={{ backgroundColor: "rgba(255,251,243,0.50)" }}>
+            <div className={`h-7 w-1 shrink-0 rounded-full ${configured ? "bg-copper/70" : "bg-ink/20"}`} />
+            <div className="min-w-0 flex-1">
+              <div className="font-heading text-[15px] font-bold text-ink">
+                {configured ? "自带钥匙在账上" : "还没存自带钥匙"}
+              </div>
+              <div className="mt-0.5 font-mono text-[12px] font-semibold text-ink/70">
+                {configured ? masked : "现在烧平台积分；存一把就换你自己的油"}
+              </div>
+            </div>
+            {configured && (
+              <button type="button" onClick={clear} disabled={busy}
+                      className="shrink-0 rounded-full border border-copper/40 px-4 py-1.5 text-[12px] font-bold text-copper transition-colors duration-300 hover:bg-copper/10 disabled:opacity-50">
+                清除
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* 钥匙输入：password 型防肩窥；存完即清空，页面永不回显全文（要看状态看掩码行） */}
+        <div className="mt-4">
+          <div className="rounded-[1rem] p-1 ring-1 ring-ink/10 transition-all duration-300 focus-within:ring-copper/30"
+               style={{ backgroundColor: "var(--color-mist)", transitionTimingFunction: "var(--ease-glide)" }}>
+            <input type="password" autoComplete="off" spellCheck={false} value={draft}
+                   onChange={(e) => setDraft(e.target.value)}
+                   placeholder="sk-…　从 platform.deepseek.com 建钥匙后粘这里"
+                   className="w-full rounded-[calc(1rem-0.25rem)] bg-parchment px-4 py-3 text-[14px] font-semibold text-ink outline-none placeholder:text-ink/45" />
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <button type="button" onClick={save} disabled={busy || !draft.trim()}
+                    className="rounded-full px-5 py-2 text-[13px] font-bold text-parchment shadow-copper transition-transform duration-300 active:scale-95 disabled:opacity-50"
+                    style={{ backgroundColor: "var(--color-copper)" }}>
+              存钥匙
+            </button>
+            <button type="button" onClick={test} disabled={busy || (!draft.trim() && !configured)}
+                    className="rounded-full border border-copper/40 px-4 py-1.5 text-[12px] font-bold text-copper transition-colors duration-300 hover:bg-copper/10 disabled:opacity-50">
+              测试连通
+            </button>
+            {msg && (
+              <span className={`text-[11px] font-semibold ${msgOk ? "text-copper" : "text-ink/70"}`}>{msg}</span>
+            )}
+          </div>
+        </div>
+
+        <p className="mt-4 text-[11px] font-semibold leading-relaxed text-ink/50">
+          诚实边界：钥匙以明文存在你账号的设置行里（熟人期现状，公网开放前会改加密存储）；
+          页面与日志只出现掩码。删钥匙随时可，删完立刻回到积分计费。
+        </p>
+      </div>
+    </div>
   );
 }
 

@@ -211,6 +211,13 @@ class AgentSetting(Base):
     # False=自称懂了也不请他复述。子闸从属大门：teaching_mode 关了没有
     # 教学轨，本闸无从生效（设置页文案标明）。
     feynman_mode: Mapped[bool | None] = mapped_column(Boolean)
+    # 2026-10-31（用户拍板·自带钥匙 BYOK）：户自己的 DeepSeek API key。
+    # NULL/空=没接（全走平台钥匙+积分）；有值=本户 deepseek 平台的对话电厂
+    # 改用这把钥匙，且对话不扣积分（orchestrator/stream/教学轨三腿同一闸语义）。
+    # ⚠️ 明文存储（熟人期决定：与 .env 同信任域——库在户主自己机器上）；
+    #    执法边界：只进电厂请求头，永不进 API 回显（读侧只回掩码）、永不进日志。
+    #    dashscope/zhipu 平台不吃此钥匙（OCR/向量点火照旧平台账）。
+    own_deepseek_key: Mapped[str | None] = mapped_column(Text)
 
 
 class MemoryFact(Base):

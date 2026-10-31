@@ -209,6 +209,19 @@ def model_for(session, uid: int) -> str:
         "SELECT model_choice FROM agent_settings WHERE user_id = :u"), {"u": uid}))
 
 
+def own_key_for(session, uid: int, model: str) -> str | None:
+    """BYOK（2026-10-31）：本户选的这个脑子该不该带自带的钥匙。
+    语义钉死：只有「钥匙在册 且 当前型号落 DeepSeek 平台」才给钥匙——
+    换到通义/智谱型号，自带钥匙自动失效回平台路（dashscope/zhipu 不吃它，拍板）。
+    ⓪⚠ 返回值是本户明文钥匙，只准就地传给电厂 get_client，永不回显、永不进日志、
+    永不进 SQL 之外的账表；查询走参数化，user_id 票闸同家法。"""
+    from backend.llm import platform_of   # 延迟 import：model_for 同款规矩
+    if platform_of(model) != "deepseek":
+        return None
+    return session.scalar(text(
+        "SELECT own_deepseek_key FROM agent_settings WHERE user_id = :u"), {"u": uid})
+
+
 def tools_for(session, uid: int) -> list[dict]:
     """一轮对话的工具集（两腿共用的唯一真源）：常规工具人人有；
     web_search 按开关随行就市——关着就不进 schema，模型无从举手，不烧一分。"""
