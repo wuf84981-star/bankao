@@ -1,33 +1,32 @@
 <div align="center">
-  <a href="https://github.com/wind989/bankao">
-    <img src="frontend/public/favicon.svg" alt="Logo" width="80" height="80">
-  </a>
-
+<a href="https://github.com/wind989/bankao">
+<img src="frontend/public/favicon.svg" alt="Logo" width="80" height="80">
+</a>
 <h3 align="center">伴考 · BanKao</h3>
-
-  <p align="center">
-    私人备考 AI Agent：排计划、盯打卡、沉错题、出强化、判分数——网页 + QQ 双通道，全部账本记在你自己的服务器上。
-    <br />
-    <a href="#快速开始"><strong>本地跑起来 »</strong></a>
-    <br />
-  </p>
-
-
-
-<details>
-  <summary>目录</summary>
-  <ol>
-    <li><a href="#项目简介">项目简介：解决什么痛点</a></li>
-    <li><a href="#核心亮点">✨ 核心亮点</a></li>
-    <li><a href="#技术栈">🛠️ 技术栈</a></li>
-    <li><a href="#效果图">📷 效果图</a></li>
-    <li><a href="#快速开始">🚀 快速启动</a></li>
-    <li><a href="#目录结构">📁 项目目录说明</a></li>
-    <li><a href="#使用示例">📖 使用示例与接口说明</a></li>
-    <li><a href="#后续规划">📋 后续规划</a></li>
-    <li><a href="#参与贡献">参与贡献 / 许可证 / 联系 / 致谢</a></li>
-  </ol>
+<p align="center">
+私人备考 AI Agent：排计划、盯打卡、沉错题、出强化、判分数——网页 + QQ 双通道，全部账本记在你自己的服务器上。
+<br />
+<a href="#快速开始"><strong>本地跑起来 »</strong></a>
+<br />
+</p>
+<details style="margin-top: 24px;" open>
+<summary>目录</summary>
+<ol>
+<li><a href="#项目简介">项目简介：解决什么痛点</a></li>
+<li><a href="#核心亮点">✨ 核心亮点</a></li>
+<li><a href="#技术栈">🛠️ 技术栈</a></li>
+<li><a href="#效果图">📷 效果图</a></li>
+<li><a href="#快速开始">🚀 快速启动</a></li>
+<li><a href="#目录结构">📁 项目目录说明</a></li>
+<li><a href="#使用示例">📖 使用示例与接口说明</a></li>
+<li><a href="#后续规划">📋 后续规划</a></li>
+<li><a href="#参与贡献">参与贡献 / 许可证 / 联系 / 致谢</a></li>
+</ol>
 </details>
+</div>
+
+
+
 
 ---
 
@@ -178,27 +177,51 @@ uv run --with pytest -q python -m pytest tests/   # 360 例离线单测，零真
 <a id="目录结构"></a>
 
 ```
+## 📁 项目目录说明
+<a id="目录结构"></a>
+```text
 bankao/
-├── backend/               # FastAPI 后端（大脑所在）
-│   ├── main.py            #   54 个 REST/SSE 路由（网页腿）
-│   ├── qq.py              #   OneBot11 事件腿（QQ 消息进、主动推送出）
-│   ├── orchestrator.py    #   双通道汇合点：29 工具 function-call 循环
-│   ├── teaching_graph.py  #   LangGraph 六节点教学状态机
-│   ├── tools.py           #   工具手：排计划/打卡/出题/判分/存档/查账……
-│   ├── search.py          #   RAG 三路召回 + RRF 融合
-│   ├── plan_validator.py  #   计划纯函数校验墙（V1~V6）
-│   ├── question_validator.py / questioning.py  # 客观题程序裁决 / 主观题要点对照
-│   ├── jobs.py            #   APScheduler 三张日程：03:00 清事件/每 5 分钟提醒/04:00 备份
-│   ├── points.py / short_memory.py / gaps.py / analytics.py …  # 积分流水/会话摘要/缺口账/埋点
-│   └── evals/             #   检索评测架（goldset + 召回指标，可重跑）
-├── frontend/              # React 19 + TS + Tailwind 4；src/pages 八页；dist 出货品
-├── migrations/            # Alembic 迁移（23 张表的户口登记簿）
-├── tests/                 # 360 离线单测（假件注入外部服务，数据库走真箱）
-├── infra/nginx.conf       # 大门值班手册（静态递送 + /api 反代 + SSE 放行）
-├── docker-compose.yml     # 六箱配载图（本机与云服务器跑同一份）
-├── .env.example           # 密钥模板（真 .env 永不进库）
-├── data/                  # 运行数据（不入库）：uploads 资料仓 / backups 备份 / napcat 登录态
-└── LICENSE                # MIT
+├── backend/
+│   # FastAPI 后端（大脑所在）
+│   ├── main.py
+│   │   # 54 个 REST/SSE 路由（网页腿）
+│   ├── qq.py
+│   │   # OneBot11 事件腿（QQ 消息进、主动推送出）
+│   ├── orchestrator.py
+│   │   # 双通道汇合点：29 工具 function‑call 循环
+│   ├── teaching_graph.py
+│   │   # LangGraph 六节点教学状态机
+│   ├── tools.py
+│   │   # 工具手：排计划/打卡/出题/判分/存档/查账……
+│   ├── search.py
+│   │   # RAG 三路召回 + RRF 融合
+│   ├── plan_validator.py
+│   │   # 计划纯函数校验墙（V1~V6）
+│   ├── question_validator.py / questioning.py
+│   │   # 客观题程序裁决 / 主观题要点对照
+│   ├── jobs.py
+│   │   # APScheduler：清事件/提醒/数据库备份定时任务
+│   ├── points.py / short_memory.py / gaps.py / analytics.py …
+│   │   # 积分流水 / 会话摘要 / 缺口账 / 埋点
+│   └── evals/
+│       # 检索评测架（goldset + 召回指标，可重跑）
+├── frontend/
+│   # React 19 + TS + Tailwind 4；src/pages 八页；dist 出货品
+├── migrations/
+│   # Alembic 迁移（23 张表的户口登记簿）
+├── tests/
+│   # 360 离线单测（假件注入外部服务，数据库走真箱）
+├── infra/nginx.conf
+│   # 大门值班手册（静态递送 + /api 反代 + SSE 放行）
+├── docker‑compose.yml
+│   # 六箱配载图（本机与云服务器跑同一份）
+├── .env.example
+│   # 密钥模板（真 .env 永不进库）
+├── data/
+│   # 运行数据（不入库）：uploads资料仓 / backups备份 / napcat登录态
+└── LICENSE
+    # MIT
+
 ```
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
